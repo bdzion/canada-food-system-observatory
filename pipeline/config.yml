@@ -1,0 +1,179 @@
+# Analytical settings. Change these here, not in code, so every choice is visible
+# and versioned. The Methods page publishes this file's contents.
+
+baseline:
+  # Prior years used for "normal for this time of year" comparisons.
+  years: 5
+  # Fewer comparable years than this and we report "not enough history".
+  min_years: 3
+
+infohort:
+  # Exact quote series. A series is one market x commodity x variety x grade x
+  # origin country x origin province x package. We never pool across these
+  # attributes, because prices for different packs and grades are not comparable.
+  # `link` ties a series to a global-exposure commodity (HS code) where relevant.
+  market: Wholesale-Toronto
+  series:
+    - id: lettuce-iceberg-us
+      label: Iceberg lettuce, field, imported from the United States
+      commodity: Lettuce
+      variety: Field-Head/Iceberg
+      grade: United States Number 1
+      country: US
+      province: ""
+      package: Ctn 30 Cello
+      link: "0705"
+    - id: strawberries-us
+      label: Strawberries, field, imported from the United States
+      commodity: Strawberries
+      variety: Field
+      grade: United States Number 1
+      country: US
+      province: ""
+      package: Ctn 8X1 lbs
+      link: "0810"
+    - id: broccoli-us
+      label: Broccoli, green bunched, imported from the United States
+      commodity: Broccoli
+      variety: Green
+      grade: United States Number 1
+      country: US
+      province: ""
+      package: Ctn 18 Bchd
+      link: "0704"
+    - id: oranges-navel-us
+      label: Navel oranges, imported from California
+      commodity: Oranges
+      variety: Navel-Unspecified
+      grade: United States Number 1
+      country: US
+      province: CA
+      package: Ctn 72
+      link: "0805"
+    - id: avocados-mx
+      label: Avocados, imported from Mexico
+      commodity: Avocados
+      variety: Unspecified
+      grade: N/A
+      country: MX
+      province: ""
+      package: Ctn 48
+      link: "0804"
+    - id: bananas-cr
+      label: Bananas, imported from Costa Rica
+      commodity: Bananas
+      variety: Unspecified
+      grade: N/A
+      country: CR
+      province: ""
+      package: Ctn 40 lbs
+      link: "0803"
+    - id: tomatoes-otv-on
+      label: Tomatoes on the vine, Ontario greenhouse
+      commodity: Tomatoes
+      variety: G.H.-Red On Vine
+      grade: Canada Number 1
+      country: CA
+      province: "ON"
+      package: Ctn 11 lbs
+      link: ""
+    - id: peppers-red-on
+      label: Red peppers, Ontario greenhouse
+      commodity: Peppers
+      variety: G.H.-Red
+      grade: ON NO.1
+      country: CA
+      province: "ON"
+      package: Ctn 11 lbs Xlge
+      link: ""
+    - id: carrots-jumbo-on
+      label: Carrots, jumbo, Ontario
+      commodity: Carrots
+      variety: Jumbo
+      grade: Canada Number 1
+      country: CA
+      province: "ON"
+      package: Ctn 50 lbs Jbo
+      link: ""
+    - id: potatoes-red-ca
+      label: Red potatoes, Canada
+      commodity: Potatoes
+      variety: Red
+      grade: Canada Number 1
+      country: CA
+      province: ""
+      package: Bag 10 lbs
+      link: ""
+    - id: cabbage-green-ca
+      label: Green cabbage, Canada
+      commodity: Cabbage
+      variety: Green
+      grade: Canada Number 1
+      country: CA
+      province: ""
+      package: Ctn 50 lbs
+      link: ""
+    - id: apples-mcintosh-ca
+      label: McIntosh apples, Canada
+      commodity: Apples
+      variety: Mcintosh
+      grade: Canada Number 1
+      country: CA
+      province: ""
+      package: Ctn 38 lbs 100
+      link: ""
+
+cgc:
+  # Crop year runs 1 August to 31 July. Grain week 1 ends on the first Sunday of August.
+  history_crop_years: 5
+
+statcan:
+  cpi_product: 18100004
+  cpi_series:
+    food_stores: {coordinate: "2.4.0.0.0.0.0.0.0.0", label: "Food purchased from stores, Canada"}
+    all_items: {coordinate: "2.2.0.0.0.0.0.0.0.0", label: "All-items CPI, Canada"}
+  wages_product: 14100063
+  wages_series:
+    hourly: {coordinate: "1.2.1.1.1.1.0.0.0.0", label: "Average hourly wage rate, all employees, all industries, Canada (not seasonally adjusted)"}
+  months: 84
+
+recalls:
+  window_days: 30
+  # Map CFIA "Issue" text to plain hazard groups. Unmatched issues fall into "other".
+  hazard_groups:
+    allergen: [milk, egg, peanut, tree nut, mustard, wheat, soy, gluten, sesame, sulphites, fish, crustacean, shellfish, mollusc, allergen, almond, hazelnut, cashew, walnut, pecan, pistachio, lupin]
+    microbial: [salmonella, listeria, e. coli, botulinum, clostridium, hepatitis, norovirus, cyclospora, bacillus, staphylococcus, mould, mold, yeast, microbiological, cronobacter, vibrio, shigella]
+    physical: [extraneous material, glass, metal, plastic, foreign]
+    chemical: [chemical, lead, mercury, arsenic, histamine, pesticide, undeclared colour, dioxin, cleaning]
+    quality: [non harmful, quality, spoilage]
+
+gcnews:
+  pick: 15
+
+gdacs:
+  event_types: [EQ, TC, FL, DR, VO, WF]
+  alert_levels: [Orange, Red]
+  lookback_days: 75
+
+exposure:
+  # Share of Canada's import value from one country above which we report a
+  # country-level supplier connection (linkage level L1).
+  min_partner_share: 0.05
+  commodities:
+    - {hs: "3105", label: "Mixed and phosphate fertilizers (incl. MAP and DAP)", group: inputs, scenario: phosphate}
+    - {hs: "3102", label: "Nitrogen fertilizers", group: inputs, scenario: phosphate}
+    - {hs: "2710", label: "Refined petroleum oils (incl. diesel)", group: inputs, scenario: ""}
+    - {hs: "0702", label: "Tomatoes", group: produce, scenario: ""}
+    - {hs: "0704", label: "Cabbages, broccoli and cauliflower", group: produce, scenario: ""}
+    - {hs: "0705", label: "Lettuce", group: produce, scenario: ""}
+    - {hs: "0709", label: "Other vegetables (incl. peppers)", group: produce, scenario: ""}
+    - {hs: "0803", label: "Bananas", group: produce, scenario: ""}
+    - {hs: "0804", label: "Avocados, mangoes and other fruit", group: produce, scenario: ""}
+    - {hs: "0805", label: "Citrus fruit", group: produce, scenario: ""}
+    - {hs: "0806", label: "Grapes", group: produce, scenario: ""}
+    - {hs: "0810", label: "Berries and other fresh fruit", group: produce, scenario: ""}
+    - {hs: "1006", label: "Rice", group: staples, scenario: ""}
+    - {hs: "0901", label: "Coffee", group: staples, scenario: ""}
+    - {hs: "1701", label: "Cane and beet sugar", group: staples, scenario: ""}
+    - {hs: "1511", label: "Palm oil", group: staples, scenario: ""}
+    - {hs: "0306", label: "Crustaceans (incl. shrimp)", group: protein, scenario: ""}

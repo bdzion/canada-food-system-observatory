@@ -1,0 +1,10 @@
+node_modules/
+dist/
+public/data/
+pipeline/.cache/
+__pycache__/
+*.pyc
+.pytest_cache/
+data-branch/
+.DS_Store
+*.tsbuildinfo

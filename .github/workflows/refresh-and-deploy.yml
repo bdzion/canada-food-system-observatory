@@ -1,0 +1,97 @@
+# Refreshes the data from official APIs, stores the release on the `data` branch,
+# then builds the site and publishes it to GitHub Pages.
+# Scheduled times are in UTC and GitHub may start them late; the site shows the
+# actual processing time, never the scheduled one.
+name: Refresh data and deploy
+on:
+  schedule:
+    - cron: "17 3,9,15,21 * * *"
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "Refresh only these source IDs (comma-separated); empty = all due"
+        required: false
+  push:
+    branches: [main]
+    paths-ignore: ["**.md", "docs/**"]
+
+concurrency:
+  group: refresh-and-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: write   # push the new release to the data branch only
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check out the data branch
+        run: |
+          if git ls-remote --exit-code --heads origin data >/dev/null; then
+            git clone --depth 5 --branch data "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" data-branch
+          else
+            mkdir -p data-branch && cd data-branch && git init -b data && \
+            git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          fi
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pipeline/requirements.txt
+      - name: Run the pipeline
+        working-directory: pipeline
+        env:
+          CFSO_CACHE: ${{ runner.temp }}/cfso-cache
+        run: |
+          pip install -r requirements.txt
+          python -m pytest -q
+          if [ -n "${{ github.event.inputs.only }}" ]; then
+            python -m cfso.run --data ../data-branch/data --only "${{ github.event.inputs.only }}"
+          else
+            python -m cfso.run --data ../data-branch/data
+          fi
+      - name: Save the release to the data branch
+        working-directory: data-branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then echo "No change"; exit 0; fi
+          git commit -q -m "Data release $(jq -r .release_id data/manifest.json)"
+          git push origin HEAD:data
+
+  deploy:
+    needs: refresh
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch the latest data release
+        run: |
+          git clone --depth 1 --branch data "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" data-branch
+          rm -rf public/data && cp -r data-branch/data public/data
+          rm -rf public/data/extracts   # source extracts stay on the data branch
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - id: deployment
+        uses: actions/deploy-pages@v4

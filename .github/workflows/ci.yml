@@ -1,0 +1,33 @@
+# Tests for every pull request and push: pipeline rules, model regression, type check and build.
+name: Tests
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths-ignore: ["**.md"]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pipeline/requirements.txt
+      - name: Pipeline tests
+        working-directory: pipeline
+        run: |
+          pip install -r requirements.txt
+          python -m pytest -q
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Stress-test regression against the pinned legacy page
+        run: npm test
+      - name: Type check and build
+        run: npm run build
