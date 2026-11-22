@@ -247,7 +247,7 @@ def build_events(ex: dict, links: list[dict]) -> dict:
 
 def _round_geo(obj, nd: int = 3):
     """Round coordinates (about 100 m at 3 decimals) to keep the web map light."""
-    if isinstance(obj, list):
+    if isinstance(obj, (list, tuple)):  # shapely gives tuples, JSON gives lists
         return [_round_geo(x, nd) for x in obj]
     if isinstance(obj, float):
         return round(obj, nd)
