@@ -29,7 +29,7 @@ jobs:
     permissions:
       contents: write   # push the new release to the data branch only
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Check out the data branch
         run: |
           if git ls-remote --exit-code --heads origin data >/dev/null; then
@@ -38,7 +38,7 @@ jobs:
             mkdir -p data-branch && cd data-branch && git init -b data && \
             git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
           fi
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
@@ -76,13 +76,13 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Fetch the latest data release
         run: |
           git clone --depth 1 --branch data "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" data-branch
           rm -rf public/data && cp -r data-branch/data public/data
           rm -rf public/data/extracts   # source extracts stay on the data branch
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: "22"
           cache: npm
@@ -90,7 +90,7 @@ jobs:
       - run: npm test
       - run: npm run build
       - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v4
         with:
           path: dist
       - id: deployment
