@@ -2,13 +2,14 @@
 import { useEffect, useMemo, useState } from "react";
 import AlertMap from "../components/AlertMap";
 import { Evidence } from "../components/Badges";
-import { STEPS, TEST_TITLE } from "../content/plain";
-import { INDIC, CHECKED } from "../legacy/core.js";
+import { Spark } from "../components/Spark";
+import { LIVE_NODE, NODE_ORDER, STEPS, TEST_TITLE } from "../content/plain";
+import { INDIC, NODES, CHECKED } from "../legacy/core.js";
 import { load, useData } from "../lib/data";
 import { dateTime, longDate } from "../lib/format";
 import { liveWeather, type LiveAlerts } from "../lib/live";
 import { href } from "../lib/router";
-import type { EventItem, Situation } from "../lib/types";
+import type { EventItem, Indicator, Situation } from "../lib/types";
 import { isNew, lastVisit, remember } from "../lib/visit";
 
 const KEY_FACTS = ["phosphate", "rail", "beef", "produce"];
@@ -18,6 +19,8 @@ export default function Overview({ day }: { day?: string }) {
   const { data: events } = useData<{ items: EventItem[] }>("events.json");
   const { data: geo } = useData("weather-alerts.geojson");
   const { data: archive } = useData<{ days: string[] }>("archive/index.json");
+  const { data: indData } = useData<{ indicators: Indicator[] }>("indicators.json");
+  const { data: ongoing } = useData<{ items: any[] }>("ongoing.json");
   const [past, setPast] = useState<Situation | null>(null);
   const [live, setLive] = useState<LiveAlerts | null>(null);
   const [liveErr, setLiveErr] = useState(false);
@@ -58,6 +61,23 @@ export default function Overview({ day }: { day?: string }) {
           <p className="small muted" style={{ marginTop: 8 }}>Every figure shows where it comes from and the date it describes. Labels such as <Evidence cls="observation" /> and <Evidence cls="author_judgement" /> tell you what kind of information you are looking at.</p>
         </div>
       </section>
+
+      {!day && (ongoing?.items || []).map((o) => (
+        <section key={o.id} className="ongoing" aria-labelledby={`h-${o.id}`}>
+          <span className="tag">Ongoing disruption · day {o.days}</span> <Evidence cls="author_judgement" /> <Evidence cls="observation" />
+          <h2 id={`h-${o.id}`}>{o.title}</h2>
+          <p>{o.summary[0]} {o.summary[1]}</p>
+          <div className="live">
+            <span className={`dot ${o.live.state === "still_showing" ? "stale" : "ok"}`} />
+            <span><b>Live check:</b> {o.live.text}</span>
+            <Spark values={o.live.spark} w={120} h={28} label="Ships through the Strait of Hormuz, recent weeks" />
+          </div>
+          <p className="small muted">{o.note}</p>
+          <a className="btn" href={href("/threats/ongoing")}>What it could mean for Canada</a>
+        </section>
+      ))}
+
+      {indData && <Glance inds={indData.indicators} />}
 
       <h2>Four facts about where Canada is exposed</h2>
       <div className="facts">
@@ -140,5 +160,30 @@ export default function Overview({ day }: { day?: string }) {
         </section>
       </div>
     </>
+  );
+}
+
+/* The food chain at a glance: for each link, how many of the live figures there are unusual. */
+function Glance({ inds }: { inds: Indicator[] }) {
+  const nodes = NODES as any[];
+  return (
+    <section aria-labelledby="h-glance">
+      <h2 id="h-glance" style={{ marginBottom: 4 }}>The food chain at a glance</h2>
+      <p className="small muted" style={{ margin: 0 }}>How many of the figures we follow at each link are unusual for the time of year. Choose a link to see them.</p>
+      <div className="glance">
+        {NODE_ORDER.map((id) => {
+          const xs = inds.filter((i) => LIVE_NODE[i.id] === id);
+          const out = xs.filter((i) => i.headline.state === "outside_reference_range_review");
+          const n = nodes.find((x) => x.id === id);
+          return (
+            <a key={id} href={href(`/system?node=${id}`)}>
+              <b>{n?.name || id}</b>
+              <span className="n">{xs.length} figure{xs.length === 1 ? "" : "s"}</span><br />
+              {out.length ? <span className="flag">◆ {out.length} unusual</span> : <span className="ok">● none unusual</span>}
+            </a>
+          );
+        })}
+      </div>
+    </section>
   );
 }

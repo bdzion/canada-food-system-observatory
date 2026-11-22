@@ -1,7 +1,7 @@
 /* Chart for each indicator kind, drawn from series/<id>.json. */
 import { useState } from "react";
 import { useData } from "../lib/data";
-import { monthYear, num, shortDate } from "../lib/format";
+import { longDate, monthYear, num, shortDate } from "../lib/format";
 import LineChart, { Legend } from "./LineChart";
 import { useWidth } from "./useWidth";
 
@@ -134,6 +134,136 @@ export function WeeklyBars({ d }: { d: any }) {
   );
 }
 
+/* Generic chart for the release-2 indicators: one or more lines over time,
+ * with the range of the same period in past years shaded behind the selected line. */
+const DASH = [undefined, "6 4", "2 3", "8 3 2 3", "1 3"];
+const COLS = ["var(--act)", "var(--base)", "var(--c3)", "var(--c4)", "var(--c5)"];
+const dayOf = (t: string) => Math.round(+new Date(t.slice(0, 10) + "T12:00:00Z") / DAY);
+
+function fmtFor(unit: string) {
+  if (unit === "dollars") return (v: number) => "$" + num(v, v < 20 ? 2 : 0);
+  if (unit === "CAD") return (v: number) => "$" + num(v, v < 0.2 ? 3 : 2);
+  if (unit === "percent") return (v: number) => num(v, v < 10 ? 1 : 0) + "%";
+  if (unit === "cents per litre") return (v: number) => num(v, 0) + "¢";
+  return (v: number) => (Math.abs(v) >= 1e6 ? num(v / 1e6, 1) + "M" : Math.abs(v) >= 1e4 ? num(v / 1e3, 0) + "k" : num(v, Math.abs(v) < 10 ? 1 : 0));
+}
+
+function yearTicks(x0: number, x1: number) {
+  const out = [];
+  const y0 = new Date(x0 * DAY).getUTCFullYear(), y1 = new Date(x1 * DAY).getUTCFullYear();
+  const span = y1 - y0;
+  for (let y = y0; y <= y1 + 1; y++) {
+    if (span > 5 && y % 2) continue;
+    out.push({ v: dayOf(`${y}-01-01`), label: String(y) });
+    if (span <= 1) out.push({ v: dayOf(`${y}-07-01`), label: `Jul ${y}` });
+  }
+  return out;
+}
+
+function MiniTable({ lines, unit, freq }: { lines: any[]; unit: string; freq: string }) {
+  const f = fmtFor(unit);
+  const ts = [...new Set(lines.flatMap((l) => l.points.map((p: any) => p.t)))].sort().slice(-24).reverse();
+  return (
+    <div className="tablewrap" style={{ maxHeight: 360, overflow: "auto" }}><table className="data">
+      <thead><tr><th>{freq === "weekly" ? "Week ending" : freq === "annual" ? "Year" : "Month"}</th>{lines.map((l) => <th key={l.id} className="num">{l.label}</th>)}</tr></thead>
+      <tbody>{ts.map((t) => <tr key={t}><td>{freq === "annual" ? t.slice(0, 4) : freq === "weekly" ? longDate(t) : monthYear(t)}</td>
+        {lines.map((l) => { const p = l.points.find((q: any) => q.t === t); const b = (l.band || []).find((q: any) => q.t === t);
+          return <td key={l.id} className="num">{p && p.v != null ? f(p.v) : "—"}{b && b.lo != null && <div className="small muted">past {f(b.lo)}–{f(b.hi)}</div>}</td>; })}</tr>)}</tbody>
+    </table></div>
+  );
+}
+
+export function LinesChart({ d, initial, height }: { d: any; initial?: string; height?: number }) {
+  const [sel, setSel] = useState<string>(initial && d.lines.some((l: any) => l.id === initial) ? initial : d.main);
+  const [table, setTable] = useState(false);
+  const unit = d.unit;
+  if (d.multiples) return <Multiples d={d} />;
+  const pick = d.pick && d.lines.length > 1;
+  const shown = pick ? d.lines.filter((l: any) => l.id === sel) : d.lines;
+  const ln = shown[0];
+  const lineUnit = (ln && d.units?.[ln.id]) || unit;
+  const f = fmtFor(pick ? lineUnit : unit);
+  const xs = shown.flatMap((l: any) => l.points.map((p: any) => dayOf(p.t)));
+  if (!xs.length) return <p className="empty">No data to draw.</p>;
+  const x0 = Math.min(...xs), x1 = Math.max(...xs);
+  const bandLine = pick || shown.length === 1 ? ln : null;
+  const pastWord = d.inflation_adjusted ? "Lowest to highest in the same period of the past five years, in that period's dollars" : "Lowest to highest in the same period of the past five years";
+  return (
+    <div>
+      {pick && (
+        <div className="chips" role="group" aria-label="Choose a series">
+          {d.lines.map((l: any) => <button key={l.id} className="chip" aria-pressed={l.id === sel} onClick={() => setSel(l.id)}>{l.label}</button>)}
+        </div>
+      )}
+      <Legend items={[
+        ...shown.map((l: any, i: number) => ({ label: l.label, color: COLS[i % COLS.length], dash: i > 0 })),
+        ...(bandLine && (bandLine.band || []).some((b: any) => b.lo != null) ? [{ label: pastWord, color: "var(--band)", box: true }] : []),
+      ]} />
+      {table ? <MiniTable lines={shown} unit={unit} freq={d.freq} /> : (
+        <LineChart aria={`${shown.map((l: any) => l.label).join(", ")} over time`} height={height}
+          xDomain={[x0, x1]} xTicks={yearTicks(x0, x1)} yLabel={d.y_label || (pick ? d.units?.[sel] : "") || unit}
+          yFmt={f} xFmt={(x) => (d.freq === "weekly" || d.freq === "daily" ? longDate(new Date(x * DAY).toISOString()) : d.freq === "annual" ? String(new Date(x * DAY).getUTCFullYear()) : monthYear(new Date(x * DAY).toISOString()))}
+          vlines={(d.marks || []).map((m: any) => ({ x: dayOf(m.t), label: m.label, color: "var(--ready)" }))}
+          bands={bandLine ? [{ data: (bandLine.band || []).map((b: any) => ({ x: dayOf(b.t), lo: b.lo, hi: b.hi })), color: "var(--band)", label: "Past five years" }] : []}
+          series={shown.map((l: any, i: number) => ({ id: l.id, label: l.label, color: COLS[i % COLS.length], dash: DASH[i % DASH.length], width: i === 0 ? 2.5 : 2,
+            data: l.points.map((p: any) => ({ x: dayOf(p.t), y: p.v })) }))} />
+      )}
+      <p className="noprint"><button className="btn ghost small" onClick={() => setTable(!table)} aria-pressed={table}>{table ? "Show as a chart" : "Show as a table"}</button></p>
+    </div>
+  );
+}
+
+function Multiples({ d }: { d: any }) {
+  const f = fmtFor(d.unit);
+  return (
+    <div>
+      <Legend items={[{ label: "Average shelf price", color: "var(--act)" }, { label: "Lowest to highest in the same month of the past five years, in that month's dollars", color: "var(--band)", box: true }]} />
+      <div className="multiples">
+        {d.lines.map((l: any) => {
+          const xs = l.points.map((p: any) => dayOf(p.t));
+          const last = [...l.points].reverse().find((p: any) => p.v != null);
+          const lb = (l.band || []).find((b: any) => b.t === last?.t);
+          const out = lb && lb.hi != null && last && (last.v > lb.hi || last.v < lb.lo);
+          return (
+            <div key={l.id} className={`mult${out ? " out" : ""}`}>
+              <div className="mh"><b>{l.label}</b><span>{last ? f(last.v) : "—"}</span></div>
+              <LineChart aria={`${l.label}, price by month`} height={120} xDomain={[Math.min(...xs), Math.max(...xs)]} xTicks={yearTicks(Math.min(...xs), Math.max(...xs)).filter((_, i) => i % 2 === 0)}
+                yFmt={f} xFmt={(x) => monthYear(new Date(x * DAY).toISOString())}
+                bands={[{ data: (l.band || []).map((b: any) => ({ x: dayOf(b.t), lo: b.lo, hi: b.hi })), color: "var(--band)", label: "Past five years" }]}
+                series={[{ id: l.id, label: l.label, color: "var(--act)", width: 2, endLabel: false, data: l.points.map((p: any) => ({ x: dayOf(p.t), y: p.v })) }]} />
+              {out && <div className="small"><span className="st out">{last.v > lb.hi ? "Higher" : "Lower"} than in the past five years</span></div>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export function BarsChart({ d }: { d: any }) {
+  const rows = d.rows;
+  const max = Math.max(...rows.map((r: any) => Math.abs(r.yoy)), Math.abs(d.ref?.v || 0), 0.5);
+  const neg = rows.some((r: any) => r.yoy < 0);
+  return (
+    <div>
+      <div className="bars hbars" role="table" aria-label={`Change in grocery prices from a year earlier, by province`}>
+        {rows.map((r: any) => (
+          <div className="row" role="row" key={r.id}>
+            <span role="cell">{r.label}</span>
+            <span role="cell" className="track">
+              {neg && <span className="zero" />}
+              <span className="bar" style={{ display: "block", width: `${(100 * Math.abs(r.yoy)) / max / (neg ? 2 : 1)}%`, marginLeft: neg ? (r.yoy < 0 ? `${50 - (50 * Math.abs(r.yoy)) / max}%` : "50%") : 0, background: "var(--act)" }} />
+              {d.ref && <span className="refmark" style={{ left: neg ? `${50 + (50 * d.ref.v) / max}%` : `${(100 * d.ref.v) / max}%` }} title={`${d.ref.label}: ${d.ref.v}%`} />}
+            </span>
+            <span role="cell" className="v">{r.yoy > 0 ? "+" : ""}{r.yoy.toFixed(1)}%</span>
+          </div>
+        ))}
+      </div>
+      {d.ref && <p className="small muted">The thin vertical mark shows {d.ref.label} as a whole ({d.ref.v > 0 ? "+" : ""}{d.ref.v}%). {d.unit}.</p>}
+    </div>
+  );
+}
+
 export default function IndicatorChart({ id, kind, initial }: { id: string; kind?: string; initial?: string }) {
   const { data, error } = useData(kind === "alerts" ? null : `series/${id}.json`);
   if (kind === "alerts") return null;
@@ -143,6 +273,8 @@ export default function IndicatorChart({ id, kind, initial }: { id: string; kind
   if (data.kind === "produce") return <ProduceChart d={data} initial={initial} />;
   if (data.kind === "monthly") return <AffordabilityChart d={data} />;
   if (data.kind === "weekly_counts") return <WeeklyBars d={data} />;
+  if (data.kind === "lines") return <LinesChart d={data} initial={initial} />;
+  if (data.kind === "bars") return <BarsChart d={data} />;
   return null;
 }
 
@@ -160,6 +292,13 @@ export function toCSV(d: any): string {
   } else if (d.kind === "weekly_counts") {
     rows.push(["week_ending", "notices"]);
     d.rows.forEach((r: any) => rows.push([r.t, r.v]));
+  } else if (d.kind === "lines") {
+    rows.push(["series", "label", "date", "value", "past_5y_min", "past_5y_median", "past_5y_max", "unit"]);
+    d.lines.forEach((l: any) => l.points.forEach((p: any) => { const b = (l.band || []).find((q: any) => q.t === p.t) || {};
+      rows.push([l.id, l.label, p.t, p.v ?? "", b.lo ?? "", b.med ?? "", b.hi ?? "", d.units?.[l.id] || d.unit]); }));
+  } else if (d.kind === "bars") {
+    rows.push(["id", "label", "month", "change_from_year_earlier_pct"]);
+    d.rows.forEach((r: any) => rows.push([r.id, r.label, r.t.slice(0, 7), r.yoy]));
   }
   return rows.map((r) => r.map((c) => (/[",\n]/.test(String(c)) ? `"${String(c).replace(/"/g, '""')}"` : c)).join(",")).join("\n") + "\n";
 }

@@ -1,6 +1,7 @@
 // Step 3: the threats. What could go wrong, what is showing up now, and what acting early could save.
 import { useMemo, useState } from "react";
-import { Evidence, StateChip } from "../components/Badges";
+import { Evidence } from "../components/Badges";
+import IndicatorCard from "../components/IndicatorCard";
 import LineChart, { Legend } from "../components/LineChart";
 import { StepFoot, StepHead } from "../components/Steps";
 import { GROUP_PLAIN, ORIGIN_PLAIN, TEST_LIVE, TEST_TITLE } from "../content/plain";
@@ -15,6 +16,7 @@ const BAND: Record<string, string> = { High: "High concern", Moderate: "Moderate
 
 export function ThreatsHub() {
   const { data: ev } = useData<{ items: EventItem[] }>("events.json");
+  const { data: og } = useData<{ items: any[] }>("ongoing.json");
   const [open, setOpen] = useState<string | null>(null);
   const items = ev?.items || [];
   const nWarn = items.filter((e) => e.kind === "weather_alert").length;
@@ -27,6 +29,13 @@ export function ThreatsHub() {
       <p style={{ maxWidth: "75ch" }}>A threat is anything that could break a link in the chain: bad weather, an animal disease, a strike, a cyberattack, a trade dispute. Some start in Canada, others abroad. This step lists the eighteen threats we track, shows which ones are showing up now, and lets you test what acting early could save.</p>
 
       <h2>Is anything happening now?</h2>
+      {(og?.items || []).map((o) => (
+        <a key={o.id} className="card ongoing" href={href("/threats/ongoing")} style={{ display: "block" }}>
+          <span className="tag">Ongoing disruption · day {o.days}</span>
+          <h4 style={{ marginTop: 8 }}>{o.title}</h4>
+          <p>{o.live.text}</p>
+        </a>
+      ))}
       <div className="grid2">
         <a className="card" href={href("/threats/warnings")}>
           <div className="meta"><Evidence cls="official_alert" /><Evidence cls="official_notice" /></div>
@@ -90,7 +99,7 @@ function LiveContext({ k }: { k: string }) {
     <section className="panel">
       <h3>What the latest data show</h3>
       <p className="small muted">{L?.text}</p>
-      {inds.map((i) => <a key={i.id} className="card" href={href(`/indicators/${i.id}`)}><div className="meta"><Evidence cls={i.id === "weather_alerts" ? "official_alert" : "observation"} /><StateChip state={i.headline.state} direction={i.headline.direction} /></div><h4>{i.title}</h4><p>{i.headline.text}</p></a>)}
+      {inds.map((i) => <IndicatorCard key={i.id} i={i} compact role={false} />)}
       {L?.link ? <p><a href={href(L.link)}>{L.label} →</a></p> : null}
       <p className="small"><b>The test does not use these figures.</b> You set its assumptions yourself. The live data are here so you can judge how close the situation is to the test.</p>
     </section>

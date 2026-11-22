@@ -57,9 +57,19 @@ def _card(ind: dict | None) -> dict | None:
 
 
 def situation(release_id: str, now: datetime, inds: list[dict], events: dict, links: list[dict],
-              sources: list[dict], prev: dict | None, prev_events: dict) -> dict:
+              sources: list[dict], prev: dict | None, prev_events: dict, ongoing: list[dict] | None = None) -> dict:
     items = events["items"]
-    g = {k: _ind(inds, k) for k in ("grain_stocks", "grain_exports", "produce_prices", "food_affordability", "food_recalls", "weather_alerts")}
+    g = {k: _ind(inds, k) for k in ("grain_stocks", "grain_exports", "produce_prices", "food_affordability", "food_recalls", "weather_alerts",
+                                    "sea_lanes", "ports", "world_fertilizer", "world_prices", "diesel", "farm_inputs", "store_prices",
+                                    "provincial_prices", "food_insecurity", "rail_freight", "work_stoppages", "exchange_rate",
+                                    "prairie_drought", "us_drought")}
+    ongoing = ongoing or []
+    stale = {x["id"] for x in sources if x["health"] in ("stale", "error")}
+
+    def note(ind: dict) -> str:
+        if any(sid in stale for sid in ind.get("source_ids", [])):
+            return " These are the latest figures published; the source has not updated as expected since."
+        return ""
     glob = [e for e in items if e["kind"] == "global_hazard"]
     current_glob = [e for e in glob if e.get("is_current")] or glob[:8]
     l1 = [e for e in current_glob if (e.get("canada_link") or {}).get("level") == "L1"]
@@ -67,14 +77,19 @@ def situation(release_id: str, now: datetime, inds: list[dict], events: dict, li
 
     # ---- headline sentences, each tied to its evidence
     head = []
+    for d in ongoing:
+        head.append({"theme": "Ongoing: " + d["title"].split(" is ")[0].replace("The ", ""), "text": d["summary"][0] + " " + d["live"]["text"],
+                     "evidence": [d["id"], d["live"].get("indicator") or ""], "link": "/threats/ongoing"})
+    if g["world_fertilizer"]:
+        head.append({"theme": "Fertilizer", "text": g["world_fertilizer"]["headline"]["text"] + note(g["world_fertilizer"]), "evidence": ["world_fertilizer"], "link": "/indicators/world_fertilizer"})
     if g["grain_stocks"]:
-        head.append({"theme": "Grain in storage", "text": g["grain_stocks"]["headline"]["text"], "evidence": ["grain_stocks"], "link": "/indicators/grain_stocks"})
+        head.append({"theme": "Grain in storage", "text": g["grain_stocks"]["headline"]["text"] + note(g["grain_stocks"]), "evidence": ["grain_stocks"], "link": "/indicators/grain_stocks"})
     if g["grain_exports"]:
-        head.append({"theme": "Grain shipped", "text": g["grain_exports"]["headline"]["text"], "evidence": ["grain_exports"], "link": "/indicators/grain_exports"})
+        head.append({"theme": "Grain shipped", "text": g["grain_exports"]["headline"]["text"] + note(g["grain_exports"]), "evidence": ["grain_exports"], "link": "/indicators/grain_exports"})
     if g["produce_prices"]:
-        head.append({"theme": "Fresh produce", "text": g["produce_prices"]["headline"]["text"], "evidence": ["produce_prices"], "link": "/indicators/produce_prices"})
+        head.append({"theme": "Fresh produce", "text": g["produce_prices"]["headline"]["text"] + note(g["produce_prices"]), "evidence": ["produce_prices"], "link": "/indicators/produce_prices"})
     if g["food_affordability"]:
-        head.append({"theme": "Grocery bills", "text": g["food_affordability"]["headline"]["text"], "evidence": ["food_affordability"], "link": "/indicators/food_affordability"})
+        head.append({"theme": "Grocery bills", "text": g["food_affordability"]["headline"]["text"] + note(g["food_affordability"]), "evidence": ["food_affordability"], "link": "/indicators/food_affordability"})
     if current_glob:
         nd = len(current_glob)
         txt = (f"The Global Disaster Alert and Coordination System, run by the United Nations and the European Commission, lists {words(nd)} serious disaster{'s' if nd != 1 else ''} around the world. "
@@ -84,7 +99,8 @@ def situation(release_id: str, now: datetime, inds: list[dict], events: dict, li
         head.append({"theme": "Disasters abroad", "text": txt, "evidence": [e["id"] for e in l1[:5]], "link": "/threats/abroad"})
 
     # ---- four columns: what is happening -> where it could reach Canada -> what absorbs it -> who feels it
-    happening = [c for c in (_card(g["weather_alerts"]), _card(g["food_recalls"])) if c]
+    happening = [c for c in (_card(g["sea_lanes"]), _card(g["weather_alerts"]), _card(g["prairie_drought"]), _card(g["us_drought"]),
+                             _card(g["food_recalls"]), _card(g["work_stoppages"])) if c]
     if current_glob:
         happening.append({"id": "global_hazards", "title": "Disasters abroad", "role": "signal",
                           "state": "official_notice_active", "text": f"{words(len(current_glob), True)} serious disaster{'s' if len(current_glob) != 1 else ''} listed worldwide in recent weeks; {words(len(l1))} in countries that supply Canada.",
@@ -108,8 +124,10 @@ def situation(release_id: str, now: datetime, inds: list[dict], events: dict, li
                                + (f", and {words(more)} other product{'s' if more != 1 else ''} we track." if more else ".")
                                + (f" {top['country']} is a large country, so the disaster may be far from where these are grown." if top.get("large_country") else "")),
                       "scenario": top.get("scenario")})
-    absorbs = [c for c in (_card(g["grain_stocks"]), _card(g["grain_exports"]), _card(g["produce_prices"])) if c]
-    feels = [c for c in (_card(g["food_affordability"]),) if c]
+    reach += [c for c in (_card(g["world_fertilizer"]), _card(g["world_prices"]), _card(g["diesel"]), _card(g["exchange_rate"])) if c]
+    absorbs = [c for c in (_card(g["grain_stocks"]), _card(g["grain_exports"]), _card(g["rail_freight"]), _card(g["ports"]),
+                           _card(g["farm_inputs"]), _card(g["produce_prices"])) if c]
+    feels = [c for c in (_card(g["food_affordability"]), _card(g["store_prices"]), _card(g["provincial_prices"]), _card(g["food_insecurity"])) if c]
 
     # ---- questions worth asking (prompts, not prescriptions)
     qs = []
@@ -128,6 +146,16 @@ def situation(release_id: str, now: datetime, inds: list[dict], events: dict, li
     fa = g["food_affordability"]
     if fa and fa["headline"].get("direction") == "food_faster":
         qs.append({"text": "Grocery prices are rising faster than wages. Which households feel this first, and are income supports and food banks keeping up?", "scenario": None})
+    wf = g["world_fertilizer"]
+    if wf and wf["headline"].get("direction") == "above":
+        qs.insert(0, {"text": "World fertilizer prices are higher than at this time in any of the past five years. Have farmers booked fertilizer for spring seeding, and at what price?", "scenario": "phosphate"})
+    sl = g["sea_lanes"]
+    if sl and any(i.get("direction") == "below" for i in sl.get("items", [])):
+        names = join_names([("" if i["label"].startswith("The ") else "the ") + i["label"] for i in sl["items"] if i.get("direction") == "below"])
+        qs.append({"text": f"Fewer ships than usual are passing through {names}. Which Canadian imports and exports use these routes, and what are the alternatives?", "scenario": "phosphate"})
+    ds = g["diesel"]
+    if ds and ds["headline"].get("direction") == "above":
+        qs.append({"text": "Diesel costs more than at this time in any recent year, after inflation. How much of that reaches farm costs and grocery prices, and how soon?", "scenario": None})
     fert = [e for e in l1 if any(c["group"] == "inputs" for c in e["canada_link"]["commodities"])]
     if fert:
         qs.append({"text": f"A disaster has hit a country that supplies Canadian farms with {fert[0]['canada_link']['commodities'][0]['label'].lower()}. If supply is disrupted, would it be before spring seeding?", "scenario": "phosphate"})
@@ -141,6 +169,8 @@ def situation(release_id: str, now: datetime, inds: list[dict], events: dict, li
         pick, why = "rail", "grain shipments or storage are unusual for this time of year"
     elif fert:
         pick, why = "phosphate", "a disaster has hit a country that supplies Canadian fertilizer or fuel"
+    elif (wf and wf["headline"].get("direction") == "above") or any(d["live"]["state"] == "still_showing" for d in ongoing):
+        pick, why = "phosphate", "world fertilizer prices are unusually high and a sea lane that carries fertilizer is largely closed"
     elif prairie_warn and now.month in (5, 6, 7, 8):
         pick, why = "drought", "weather alerts are in effect on the Prairies during the growing season"
     else:
@@ -152,16 +182,16 @@ def situation(release_id: str, now: datetime, inds: list[dict], events: dict, li
     prev_ids = {e["id"] for e in (prev_events or {}).get("items", [])}
     if prev_ids:
         new_ev = [e for e in items if e["id"] not in prev_ids]
-        for kind, label in (("recall", "new food recall"), ("weather_alert", "new weather alert"),
+        for kind, label in (("recall", "new food recall"), ("weather_alert", "new weather alert"), ("us_alert", "new US weather alert"),
                             ("gov_notice", "new government announcement"), ("global_hazard", "new disaster abroad")):
             n = [e for e in new_ev if e["kind"] == kind]
             if n:
                 changes.append({"kind": "new_event", "text": f"{len(n)} {label}{'s' if len(n) != 1 else ''}", "ids": [e["id"] for e in n][:20], "link": "/threats/warnings" if kind != "global_hazard" else "/threats/abroad"})
     prev_cards = {c["id"]: c for col in (prev or {}).get("columns", {}).values() for c in col if isinstance(c, dict)}
-    for col in (happening, absorbs, feels):
+    for col in (happening, [c for c in reach if c.get("role")], absorbs, feels):
         for c in col:
             p = prev_cards.get(c["id"])
-            if p and p.get("observation_end") != c.get("observation_end") and c["id"] not in ("weather_alerts", "global_hazards", "gov_notices"):
+            if p and p.get("observation_end") != c.get("observation_end") and c["id"] not in ("weather_alerts", "global_hazards", "gov_notices") and not c["id"].startswith(("GL-", "EQ-", "TC-", "FL-", "VO-", "DR-", "WF-")):
                 changes.append({"kind": "new_observation", "text": f"New data for {c['title'].lower()} ({c['period']})", "ids": [c["id"]], "link": f"/indicators/{c['id']}"})
             if p and p.get("state") != c.get("state") and c.get("state") and p.get("state"):
                 changes.append({"kind": "state_change", "text": f"{c['title']}: now {STATE_WORDS.get(c['state'], c['state'])} (before: {STATE_WORDS.get(p['state'], p['state'])})", "ids": [c["id"]], "link": f"/indicators/{c['id']}"})
@@ -174,11 +204,15 @@ def situation(release_id: str, now: datetime, inds: list[dict], events: dict, li
         "release_id": release_id,
         "headline": head,
         "columns": {"happening": happening, "reach": reach, "absorbs": absorbs, "feels": feels},
-        "questions": qs[:4],
+        "questions": qs[:5],
         "scenario_of_week": {"id": pick, "title": SCENARIO_TITLE[pick], "reason": why},
         "changes": changes,
         "gaps": gaps,
-        "counts": {"global_current": len(current_glob), "global_l1": len(l1), "events": len(items)},
+        "counts": {"global_current": len(current_glob), "global_l1": len(l1), "events": len(items),
+                   "unusual": sum(1 for i in inds if i.get("headline", {}).get("state") == "outside_reference_range_review"),
+                   "indicators": len(inds)},
+        "ongoing": [{"id": d["id"], "title": d["title"], "since": d["since"], "days": d["days"], "live": d["live"],
+                     "review_overdue": d["review_overdue"]} for d in ongoing],
     }
 
 

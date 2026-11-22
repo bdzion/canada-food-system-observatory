@@ -1,11 +1,14 @@
 // Step 3 (abroad): disasters in other countries, and whether Canada buys food or farm supplies from them.
 import { useMemo, useState } from "react";
 import { Evidence } from "../components/Badges";
+import IndicatorCard from "../components/IndicatorCard";
+import IndicatorChart from "../components/IndicatorChart";
+import WorldMap from "../components/WorldMap";
 import { TEST_TITLE } from "../content/plain";
 import { useData } from "../lib/data";
 import { longDate, num, usdM } from "../lib/format";
 import { href } from "../lib/router";
-import type { EventItem } from "../lib/types";
+import type { EventItem, Indicator } from "../lib/types";
 
 const LEVELS = [
   ["No link found", "Canada buys little or none of the products we track from the country hit."],
@@ -28,6 +31,7 @@ function Ladder({ at }: { at: number }) {
 export default function Exposure() {
   const { data } = useData<any>("exposure.json");
   const { data: ev } = useData<{ items: EventItem[] }>("events.json");
+  const { data: ind } = useData<{ indicators: Indicator[] }>("indicators.json");
   const [hs, setHs] = useState<string>("3105");
   const [evSel, setEvSel] = useState<string | null>(null);
   const hazards = useMemo(() => (ev?.items || []).filter((e) => e.kind === "global_hazard")
@@ -45,6 +49,22 @@ export default function Exposure() {
       <div className="eyebrow">Step 3 · The threats</div>
       <h1>Disasters abroad: could they reach Canada?</h1>
       <p className="lede">Canada imports most of its fresh fruit, much of its fertilizer and many other foods. A flood, cyclone or drought in a supplying country could reduce what reaches us. This page checks each serious disaster against the countries Canada buys from.</p>
+      <nav className="small" aria-label="On this page" style={{ margin: "6px 0 12px" }}>On this page: <a href="#h-lanes">Sea lanes</a> · <a href="#h-prices">World prices</a> · <a href="#h-haz">Disasters</a> · <a href="#h-com">Where imports come from</a> · <a href="#h-us">US growing regions</a></nav>
+      <p>Disasters are only one route. Wars and blockades can close sea lanes, and world prices carry shocks to Canada even when we buy nothing from the place hit. The first two sections below follow those routes.</p>
+
+      <section className="panel" aria-labelledby="h-lanes">
+        <h2 id="h-lanes">Sea lanes that carry fuel and fertilizer</h2>
+        <p className="small muted">Ships a day through four narrow passages, estimated by the International Monetary Fund's PortWatch. Choose a passage; the shaded band is the range for the same weeks in the past five years. <a href={href("/threats/ongoing")}>Read about the Strait of Hormuz closure →</a></p>
+        <IndicatorChart id="sea_lanes" kind="lines" />
+      </section>
+
+      <section className="panel" aria-labelledby="h-prices">
+        <h2 id="h-prices">World prices</h2>
+        <p className="small muted">Canada buys fertilizer, fuel and much of its food at world prices, so a shock anywhere can reach Canadian farms and stores this way.</p>
+        <div className="grid3">{(ind?.indicators || []).filter((i) => ["world_fertilizer", "world_prices", "exchange_rate"].includes(i.id)).map((i) => <IndicatorCard key={i.id} i={i} compact />)}</div>
+      </section>
+
+      <h2 style={{ marginTop: 24 }}>Disasters abroad</h2>
       <p>The answer comes in steps. Our automatic check can reach only step 2: it can tell that Canada buys from the country hit. Going further needs a person to look at where the disaster struck and what it damaged.</p>
       <Ladder at={-1} />
 
@@ -90,6 +110,9 @@ export default function Exposure() {
         {c && (
           <>
             <h3 style={{ marginTop: 14 }}>{c.label}: imports worth {c.total_value_usd ? usdM(c.total_value_usd) : "—"} in {c.year}</h3>
+            <WorldMap shares={Object.fromEntries(c.partners.filter((p: any) => p.iso3 && p.share != null).map((p: any) => [p.iso3, p.share]))}
+              flagged={new Set(c.partners.filter((p: any) => hazardIsos.has(p.iso3) && (p.share || 0) >= 0.01).map((p: any) => p.iso3))}
+              label={`World map: share of Canada's ${c.label.toLowerCase()} imports by supplying country. The ten largest suppliers are listed below.`} />
             <div className="bars" role="table" aria-label={`Where Canada's ${c.label} imports came from, share of value`}>
               {c.partners.slice(0, 10).map((p: any) => (
                 <div className="row" role="row" key={p.code}>
@@ -104,6 +127,21 @@ export default function Exposure() {
             {c.scenario && <p><a className="btn ghost" href={href(`/threats/${c.scenario}`)}>Try the related what-if test</a></p>}
           </>
         )}
+      </section>
+
+      <section className="panel" aria-labelledby="h-us">
+        <h2 id="h-us">US growing regions</h2>
+        <p className="small muted">Much of Canada's imported fresh fruit and vegetables comes from California, Arizona, Florida and Washington. We follow drought there, and US National Weather Service alerts that could hurt crops in the field or stop trucks.</p>
+        <div className="grid2">
+          <div>{(ind?.indicators || []).filter((i) => i.id === "us_drought").map((i) => <IndicatorCard key={i.id} i={i} compact />)}</div>
+          <div>
+            <h3>Weather alerts in effect</h3>
+            {(() => { const us = ev.items.filter((e) => e.kind === "us_alert"); return us.length ? (
+              <ul className="changes">{us.slice(0, 12).map((e) => <li key={e.id}><a href={e.url}>{e.title}</a> <span className="small muted">· {e.n_areas} zone{e.n_areas === 1 ? "" : "s"}{e.end ? ` · until ${longDate(e.end)}` : ""}</span></li>)}</ul>
+            ) : <p className="empty">No frost, freeze, heat, flood, wind, fire-weather or storm alerts in effect in these four states when we last checked.</p>; })()}
+            <p className="small muted">An alert is a forecast warning, not evidence of crop damage.</p>
+          </div>
+        </div>
       </section>
     </>
   );

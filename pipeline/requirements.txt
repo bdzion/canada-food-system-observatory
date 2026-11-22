@@ -1,3 +1,6 @@
 httpx==0.28.1
 PyYAML==6.0.2
 pytest==8.3.4
+openpyxl==3.1.5
+shapely==2.1.2
+pyproj==3.7.1

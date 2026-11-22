@@ -39,7 +39,7 @@ def _pull(product: int, series: dict, n: int) -> dict:
         if not pts:
             raise SourceError(f"no observations for {key}")
         out[key] = {
-            "label": s["label"], "product_id": product, "coordinate": s["coordinate"],
+            "label": s["label"], "unit": s.get("unit"), "product_id": product, "coordinate": s["coordinate"],
             "vector_id": obj.get("vectorId"), "points": pts,
         }
     return out

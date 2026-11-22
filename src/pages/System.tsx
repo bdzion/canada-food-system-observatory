@@ -1,7 +1,8 @@
 // Step 1: a simple map of Canada's food system. Each link shows its weak points,
 // the threats that hit it, and the live data we follow there.
 import { useState } from "react";
-import { Evidence, StateChip } from "../components/Badges";
+import { Evidence } from "../components/Badges";
+import IndicatorCard from "../components/IndicatorCard";
 import { StepFoot, StepHead } from "../components/Steps";
 import { LIVE_NODE, PATH_TO_NODE, TEST_TITLE } from "../content/plain";
 import { INDIC, NODES, REG } from "../legacy/core.js";
@@ -12,9 +13,9 @@ import type { Indicator } from "../lib/types";
 const MAIN = ["inputs", "farms", "transport", "processing", "stores"];
 const RANK: Record<string, number> = { High: 3, Raised: 2, Watch: 1 };
 
-export default function System() {
+export default function System({ node }: { node?: string }) {
   const { data } = useData<{ indicators: Indicator[] }>("indicators.json");
-  const [sel, setSel] = useState("transport");
+  const [sel, setSel] = useState(node && (NODES as any[]).some((n) => n.id === node) ? node : "transport");
   const nodes = NODES as any[];
   const byNode = (id: string) => ({
     weak: (INDIC as any[]).filter((i) => i.node === id),
@@ -69,10 +70,7 @@ export default function System() {
           </div>
           <div>
             <h3>Figures we follow here</h3>
-            {d.live.length ? d.live.map((i) => (
-              <a key={i.id} className="card" href={href(`/indicators/${i.id}`)}><div className="meta"><Evidence cls={i.id === "weather_alerts" ? "official_alert" : i.id === "food_recalls" ? "official_notice" : "observation"} /><StateChip state={i.headline.state} direction={i.headline.direction} /></div>
-                <h4>{i.title}</h4><p>{i.headline.text}</p></a>
-            )) : <p className="empty">We do not yet follow a live figure for this link.</p>}
+            {d.live.length ? d.live.map((i) => <IndicatorCard key={i.id} i={i} compact />) : <p className="empty">We do not yet follow a live figure for this link.</p>}
           </div>
         </div>
         {d.threats.some((r: any) => r.model) && <p className="small muted">What-if tests for this link: {[...new Set(d.threats.filter((r: any) => r.model).map((r: any) => r.model))].map((m: any) => <a key={m} href={href(`/threats/${m}`)} style={{ marginRight: 10 }}>{TEST_TITLE[m]}</a>)}</p>}

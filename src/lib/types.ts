@@ -19,7 +19,7 @@ export interface Source {
   last_success_at?: string; error?: string;
 }
 export interface EventItem {
-  id: string; kind: "weather_alert" | "recall" | "gov_notice" | "global_hazard"; evidence_class: string;
+  id: string; kind: "weather_alert" | "recall" | "gov_notice" | "global_hazard" | "us_alert"; evidence_class: string;
   source_id: string; issuer: string; title: string; date?: string; end?: string; place?: string; url: string;
   impact_status?: string; [k: string]: any;
 }
@@ -36,6 +36,7 @@ export interface Situation {
   changes: { kind: string; text: string; ids: string[]; link: string }[];
   gaps: { source_id: string; health: string; text: string }[];
   counts: Record<string, number>;
+  ongoing?: { id: string; title: string; since: string; days: number; live: any; review_overdue: boolean }[];
 }
 export interface Manifest {
   schema_version: string; release_id: string; generated_at: string; git_sha?: string; run_url?: string;

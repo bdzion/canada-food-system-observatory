@@ -70,7 +70,7 @@ export default function About() {
               <td className="small">{dateTime(s.last_success_at || s.retrieved_at)}</td>
               <td className="small">{s.licence_url ? <a href={s.licence_url}>{s.licence}</a> : s.licence}</td></tr>))}</tbody>
         </table></div>
-        <p className="small muted">Next to add: Agriculture and Agri-Food Canada's monthly drought map, the Canadian Food Inspection Agency's animal-disease records, crop maps to show which weather alerts fall on farmland, and news reports to confirm events.</p>
+        <p className="small muted">Next to add: the Canadian Food Inspection Agency's animal-disease records, crop maps to show which weather alerts fall on farmland, and news reports to confirm events.</p>
       </section>
 
       <section className="panel" id="sec-indicators">
@@ -85,7 +85,8 @@ export default function About() {
       <section className="panel" id="sec-unusual">
         <h2>What “unusual” means</h2>
         <p>A figure is marked <b>unusual for the time of year</b> only when it is higher or lower than in every one of the comparable past years we have (up to five, and at least three). Prices are first converted to today's dollars. The rule is deliberately strict and simple. It points to figures worth a closer look; it does not declare a problem. We will review it once we can test it against past events.</p>
-        <p>For disasters abroad, the automatic check stops at one question: did Canada import at least 5% of a product we track from the country hit, in the latest year of trade data? Anything beyond that needs a person to check where the disaster struck and what it damaged.</p>
+        <p>A few figures are handled differently. World prices are compared in US dollars without adjusting for inflation, and the text says so. Food insecurity is published once a year, so we show it without an “unusual” test. The drought shares for the Prairies use straight-line boxes south of 54° north, which only approximate farmland.</p>
+        <p>For disasters abroad, the automatic check stops at one question: did Canada import at least 5% of a product we track from the country hit, in the latest year of trade data? For earthquakes and volcanic eruptions, which damage a small area, the bar is 20%. Anything beyond that needs a person to check where the disaster struck and what it damaged.</p>
       </section>
 
       <section className="panel" id="sec-ratings">
@@ -96,7 +97,8 @@ export default function About() {
       <section className="panel" id="sec-limits">
         <h2>Limits</h2>
         <ul>
-          <li>Coverage is narrow on purpose: one wholesale market, grain in licensed elevators, and national averages for prices and wages.</li>
+          <li>Coverage is narrow on purpose: one wholesale market, grain in licensed elevators, five cities for diesel, and national averages for most prices and wages.</li>
+          <li>Ongoing disruptions, such as the closure of the Strait of Hormuz, are summarised by the research team from published sources. The summary is labelled as ours and carries the date we last reviewed it; only the linked figures update automatically.</li>
           <li>Sources publish at different speeds. Grain figures arrive weeks after the fact; trade figures a year or more.</li>
           <li>Canada buying from a country hit by a disaster is a reason to look, not evidence of an effect. Two things happening at the same time does not mean one caused the other.</li>
           <li>The what-if tests and timelines are simple illustrations. None has yet been checked against real events.</li>

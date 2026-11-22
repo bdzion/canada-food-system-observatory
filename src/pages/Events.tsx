@@ -7,7 +7,7 @@ import { href } from "../lib/router";
 import type { EventItem } from "../lib/types";
 import { isNew, lastVisit } from "../lib/visit";
 
-const KINDS: [string, string][] = [["all", "All"], ["weather_alert", "Weather alerts"], ["recall", "Food recalls"], ["gov_notice", "Government announcements"], ["global_hazard", "Disasters abroad"]];
+const KINDS: [string, string][] = [["all", "All"], ["weather_alert", "Weather alerts"], ["recall", "Food recalls"], ["gov_notice", "Government announcements"], ["global_hazard", "Disasters abroad"], ["us_alert", "US growing regions"]];
 const HAZ: Record<string, string> = { allergen: "an allergen not listed on the label", microbial: "possible bacteria or other germs", physical: "pieces of foreign material", chemical: "a chemical", quality: "quality", other: "other", unspecified: "not stated" };
 // Recall classes as defined by the Canadian Food Inspection Agency.
 const RISK: Record<string, string> = { "Class 1": "high health risk", "Class 2": "moderate health risk", "Class 3": "low health risk" };
@@ -26,7 +26,7 @@ export default function Events({ query }: { query: URLSearchParams }) {
     const since = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
     const t = q.trim().toLowerCase();
     return data.items.filter((e) => (kind === "all" || e.kind === kind) &&
-      (e.kind === "weather_alert" || (e.date || "") >= since || (e.kind === "global_hazard" && e.is_current)) &&
+      (e.kind === "weather_alert" || e.kind === "us_alert" || (e.date || "") >= since || (e.kind === "global_hazard" && e.is_current)) &&
       (!t || `${e.title} ${e.place} ${e.issuer} ${e.issue || ""}`.toLowerCase().includes(t)) && (!onlyNew || isNew(e.id)));
   }, [data, kind, days, q, onlyNew]);
   if (!data) return <p className="muted">Loading…</p>;
@@ -64,6 +64,7 @@ export default function Events({ query }: { query: URLSearchParams }) {
               {e.place && <><span>·</span><span>{PROV[e.place] || e.place}</span></>}
             </div>
             <h4><a href={e.url}>{e.title}</a></h4>
+            {e.kind === "us_alert" && <p className="small">{e.n_areas} forecast zone{e.n_areas === 1 ? "" : "s"}{e.areas?.length ? `: ${e.areas.join("; ")}` : ""}{e.n_areas > (e.areas?.length || 0) ? "…" : ""}. {e.state_label || ""} grows {e.why}.</p>}
             {e.kind === "weather_alert" && <p className="small">{e.n_areas} forecast area{e.n_areas === 1 ? "" : "s"}: {e.areas.join("; ")}{e.n_areas > e.areas.length ? "…" : ""}</p>}
             {e.kind === "recall" && <p className="small">Reason: {HAZ[e.hazard] || e.hazard}{e.issue ? ` (${e.issue})` : ""}{e.recall_class ? ` · ${e.recall_class}${RISK[e.recall_class] ? ` (${RISK[e.recall_class]})` : ""}` : ""}</p>}
             {e.kind === "global_hazard" && (

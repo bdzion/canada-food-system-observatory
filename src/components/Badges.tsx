@@ -8,7 +8,8 @@ export function Evidence({ cls }: { cls: string }) {
 export function StateChip({ state, direction }: { state?: string; direction?: string }) {
   if (!state || state === "observed") return null;
   if (state === "outside_reference_range_review") {
-    return <span className="st out">{direction === "below" ? "Unusual: lower than past years" : "Unusual: higher than past years"}</span>;
+    const t = direction === "below" ? "Unusual: lower than past years" : direction === "above" ? "Unusual: higher than past years" : "Unusual: some items";
+    return <span className="st out">{t}</span>;
   }
   const [label, cls] = STATE[state] || [state.replace(/_/g, " "), "insufficient"];
   return <span className={`st ${cls}`}>{label}</span>;

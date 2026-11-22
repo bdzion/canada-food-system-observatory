@@ -21,7 +21,8 @@ from .core import SourceError, config, iso, read_json, registry, sanitize, utc_n
 from .exposure import link_events
 from .indicators import (affordability_indicator, grain_indicator, produce_indicator,
                          recalls_indicator, weather_indicator)
-from . import narrative
+from . import narrative, ongoing
+from . import panels
 
 
 
@@ -105,10 +106,12 @@ def build_indicators(ex: dict) -> tuple[list[dict], dict[str, dict]]:
 
     def add(fn, *a, **k):
         try:
+            if fn.__module__.endswith("panels"):
+                k = {kk: vv for kk, vv in k.items() if kk != "ind_id"}
             ind, ser = fn(*a, **k)
         except Exception as e:  # a builder failure must not sink the release
             ind_id = k.get("ind_id") or getattr(fn, "__name__", "indicator")
-            inds.append({"id": ind_id, "title": ind_id, "role": "unknown",
+            inds.append({"id": ind_id, "title": ind_id.replace("_", " ").capitalize(), "role": "unknown",
                          "headline": {"state": "source_unavailable", "text": f"Could not be computed: {sanitize(str(e))}"}})
             return
         inds.append(ind)
@@ -142,6 +145,35 @@ def build_indicators(ex: dict) -> tuple[list[dict], dict[str, dict]]:
         add(recalls_indicator, ex["CA-06"], today)
     if "CA-01" in ex:
         add(weather_indicator, ex["CA-01"])
+    # Added in release 2.
+    if "GL-03" in ex:
+        add(panels.chokepoints_indicator, ex["GL-03"], ind_id="sea_lanes")
+        add(panels.ports_indicator, ex["GL-03"], ind_id="ports")
+    if "GL-04" in ex:
+        add(panels.world_fertilizer_indicator, ex["GL-04"], ind_id="world_fertilizer")
+        add(panels.world_food_energy_indicator, ex["GL-04"], ind_id="world_prices")
+    if "CA-08" in ex:
+        g = ex["CA-08"]["groups"]
+        if "diesel" in g:
+            add(panels.diesel_indicator, ex["CA-08"], ex.get("CA-04"), ind_id="diesel")
+        if "farm_inputs" in g:
+            add(panels.farm_inputs_indicator, ex["CA-08"], ind_id="farm_inputs")
+        if "retail" in g:
+            add(panels.retail_indicator, ex["CA-08"], ex.get("CA-04"), ind_id="store_prices")
+        if "provinces_food_cpi" in g:
+            add(panels.provinces_indicator, ex["CA-08"], ex.get("CA-04"), ind_id="provincial_prices")
+        if "food_insecurity" in g:
+            add(panels.food_insecurity_indicator, ex["CA-08"], ind_id="food_insecurity")
+        if "rail" in g:
+            add(panels.rail_indicator, ex["CA-08"], ind_id="rail_freight")
+        if "stoppages" in g:
+            add(panels.stoppages_indicator, ex["CA-08"], ind_id="work_stoppages")
+    if "CA-10" in ex:
+        add(panels.exchange_indicator, ex["CA-10"], ind_id="exchange_rate")
+    if "CA-09" in ex:
+        add(panels.prairie_drought_indicator, ex["CA-09"], ind_id="prairie_drought")
+    if "GL-05" in ex:
+        add(panels.us_drought_indicator, ex["GL-05"], ind_id="us_drought")
     return inds, series
 
 
@@ -191,6 +223,16 @@ def build_events(ex: dict, links: list[dict]) -> dict:
                 "countries": e["countries"], "point": e["point"], "url": e["url"], "severity_text": e["severity_text"],
                 "canada_link": lk.get(e["id"]), "impact_status": "impact_not_established",
             })
+    us = ex.get("GL-06")
+    if us:
+        for a in us["alerts"]:
+            items.append({
+                "id": a["id"], "kind": "us_alert", "evidence_class": "official_alert", "source_id": "GL-06",
+                "issuer": "US National Weather Service", "title": f"{a['event']}, {a['state_label']}",
+                "date": (a.get("onset") or "")[:10], "end": (a.get("expires") or "")[:10], "place": a["state"],
+                "areas": a["areas"], "n_areas": a["n_zones"], "url": a["url"], "why": a["why"],
+                "impact_status": "impact_not_established",
+            })
     items.sort(key=lambda x: x.get("date") or "", reverse=True)
     geo = []
     if wx:
@@ -202,6 +244,17 @@ def build_events(ex: dict, links: list[dict]) -> dict:
 
 
 # ------------------------------------------------------------------ release
+
+def _round_geo(obj, nd: int = 3):
+    """Round coordinates (about 100 m at 3 decimals) to keep the web map light."""
+    if isinstance(obj, list):
+        return [_round_geo(x, nd) for x in obj]
+    if isinstance(obj, float):
+        return round(obj, nd)
+    if isinstance(obj, dict):
+        return {k: _round_geo(v, nd) for k, v in obj.items()}
+    return obj
+
 
 def sha256(path: Path) -> str:
     h = hashlib.sha256()
@@ -265,9 +318,10 @@ def run(data_dir: Path, only: set[str] | None = None) -> dict:
         "produce_origins": [{"id": k, "label": v["label"], "country": v["country"], "link": v.get("link")}
                             for k, v in (extracts.get("CA-03") or {}).get("series", {}).items()],
     }
+    ongoing_items = ongoing.build(inds, now)
     prev_sit = read_json(data_dir / "situation.json")
     prev_events = read_json(data_dir / "events.json", {}) or {}
-    sit = narrative.situation(release_id, now, inds, events, links, sources, prev_sit, prev_events)
+    sit = narrative.situation(release_id, now, inds, events, links, sources, prev_sit, prev_events, ongoing_items)
 
     common = {"schema_version": SCHEMA_VERSION, "release_id": release_id, "generated_at": iso(now)}
     write_json(new / "indicators.json", {**common, "indicators": inds})
@@ -275,6 +329,10 @@ def run(data_dir: Path, only: set[str] | None = None) -> dict:
     write_json(new / "weather-alerts.geojson", events["weather_geo"])
     write_json(new / "exposure.json", exposure)
     write_json(new / "situation.json", {**common, **sit})
+    write_json(new / "ongoing.json", {**common, "items": ongoing_items})
+    cdm = extracts.get("CA-09")
+    if cdm and cdm.get("latest_geo"):
+        write_json(new / "drought.geojson", _round_geo(cdm["latest_geo"]))
 
     # Weekly brief: written once for each completed ISO week, never overwritten.
     narrative.write_brief_if_due(new, now, sit, inds, events, links, sources)

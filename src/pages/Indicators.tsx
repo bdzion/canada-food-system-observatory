@@ -1,7 +1,11 @@
 // Step 2: the indicators. Part A: twelve published facts on where Canada is exposed.
 // Part B: official figures, refreshed automatically, compared with past years.
+import { useState } from "react";
 import { Evidence, StateChip } from "../components/Badges";
+import DroughtMap from "../components/DroughtMap";
+import IndicatorCard, { evClass, ROLE } from "../components/IndicatorCard";
 import IndicatorChart, { toCSV } from "../components/IndicatorChart";
+import { Age, Spark, Trend } from "../components/Spark";
 import { StepFoot, StepHead } from "../components/Steps";
 import { INDIC, NODES, CHECKED } from "../legacy/core.js";
 import { load, useData } from "../lib/data";
@@ -9,16 +13,32 @@ import { dateTime, longDate } from "../lib/format";
 import { href } from "../lib/router";
 import type { Indicator, Source } from "../lib/types";
 
-const ROLE: Record<string, string> = {
-  buffer: "Backup supply", flow: "Movement of goods", market: "Prices", access: "Household budgets", signal: "Warnings and notices",
-};
 const ORDER = ["buffer", "flow", "market", "access", "signal"];
-const TEST_NAME: Record<string, string> = { rail: "the main rail line to Vancouver closes", drought: "a severe drought hits the Prairies" };
-const evClass = (id: string) => (id === "weather_alerts" ? "official_alert" : id === "food_recalls" ? "official_notice" : "observation");
-
+const ROLE_Q: Record<string, string> = {
+  buffer: "How much backup is there: stored grain, affordable farm inputs, soil moisture?",
+  flow: "Are goods moving: by rail, through ports and through the sea lanes that carry fuel and fertilizer?",
+  market: "What are prices doing, at home and on world markets?",
+  access: "Can households afford food?",
+  signal: "Are there warnings, recalls or disputes that could break a link?",
+};
+const TEST_NAME: Record<string, string> = {
+  rail: "the main rail line to Vancouver closes", drought: "a severe drought hits the Prairies", phosphate: "fertilizer imports are cut before seeding",
+};
+const fmtV = (v: number | null | undefined, unit?: string) => {
+  if (v == null) return "—";
+  if (unit === "dollars") return "$" + v.toFixed(2);
+  if (unit === "CAD") return "$" + v.toFixed(v < 0.2 ? 4 : 3);
+  if (unit === "percent") return v.toFixed(1) + "%";
+  if (unit === "cents per litre") return v.toFixed(1) + "¢";
+  if (Math.abs(v) >= 1e6) return (v / 1e6).toFixed(1) + " million";
+  if (Math.abs(v) >= 1e4) return Math.round(v / 1e3).toLocaleString("en-CA") + " thousand";
+  return v.toLocaleString("en-CA", { maximumFractionDigits: v < 10 ? 2 : 0 });
+};
 export function IndicatorList() {
   const { data } = useData<{ indicators: Indicator[] }>("indicators.json");
+  const [asTable, setAsTable] = useState(false);
   const inds = [...(data?.indicators || [])].sort((a, b) => ORDER.indexOf(a.role) - ORDER.indexOf(b.role));
+  const nOut = inds.filter((i) => i.headline.state === "outside_reference_range_review").length;
   return (
     <>
       <StepHead n={2} />
@@ -27,7 +47,16 @@ export function IndicatorList() {
       <section aria-labelledby="h-weak">
         <h2 id="h-weak">A. How exposed is Canada? Twelve weak points</h2>
         <p className="small muted">Each figure comes from the published source named on the card, checked {CHECKED}. The rating (high, raised) and how fixable each weak point is are the research team's judgement.</p>
-        {(NODES as any[]).map((n) => {
+        <p className="noprint"><button className="btn ghost small" aria-pressed={asTable} onClick={() => setAsTable(!asTable)}>{asTable ? "Show as cards" : "Show as one table"}</button></p>
+        {asTable ? (
+          <div className="tablewrap"><table className="data wtable">
+            <thead><tr><th>Link in the chain</th><th>Fact</th><th>Our rating</th><th>How fixable</th><th>Source</th></tr></thead>
+            <tbody>{(INDIC as any[]).map((i) => (
+              <tr key={i.id}><td>{(NODES as any[]).find((n) => n.id === i.node)?.name}</td>
+                <td><b>{i.num}</b> {i.title}<div className="small muted">{i.text}</div></td>
+                <td>{i.level === "High" ? "High exposure" : "Raised exposure"}</td><td>{i.fix}</td><td><a href={i.url}>{i.src}</a></td></tr>))}</tbody>
+          </table></div>
+        ) : (NODES as any[]).map((n) => {
           const items = (INDIC as any[]).filter((i) => i.node === n.id);
           if (!items.length) return null;
           return (
@@ -51,20 +80,17 @@ export function IndicatorList() {
 
       <section aria-labelledby="h-live" style={{ marginTop: 26 }}>
         <h2 id="h-live">B. What do the latest figures show?</h2>
-        <p className="small muted">Collected automatically from government and international agencies. Each card says what period the figure covers, which can be days or weeks before today.</p>
-        {!data ? <p className="muted">Loading…</p> : (
-          <div className="grid3">
-            {inds.map((i) => (
-              <a key={i.id} className="card" href={href(`/indicators/${i.id}`)}>
-                <div className="meta"><span className="pill">{ROLE[i.role] || i.role}</span><Evidence cls={evClass(i.id)} /></div>
-                <h4>{i.title}</h4>
-                <p className="muted small">{i.question}</p>
-                <p style={{ marginTop: 6 }}>{i.headline.text}</p>
-                <div className="period">{i.headline.period_label} <StateChip state={i.headline.state} direction={i.headline.direction} /></div>
-              </a>
-            ))}
-          </div>
-        )}
+        <p className="small muted">Collected automatically from government and international agencies. Each card says what period the figure covers and how old it is: some figures arrive days after the fact, others months. {data && <b>{nOut} of {inds.length} are unusual for the time of year.</b>}</p>
+        {!data ? <p className="muted">Loading…</p> : ORDER.map((r) => {
+          const xs = inds.filter((i) => i.role === r);
+          if (!xs.length) return null;
+          return (
+            <div key={r}>
+              <h3 className="rolehead">{ROLE[r]} <span className="small muted" style={{ fontWeight: 400 }}>· {ROLE_Q[r]}</span></h3>
+              <div className="grid3">{xs.map((i) => <IndicatorCard key={i.id} i={i} role={false} />)}</div>
+            </div>
+          );
+        })}
         <div className="notice info" style={{ marginTop: 14 }}><b>How we decide what is “unusual”.</b> We compare the latest figure with the same week or month in up to five past years. A figure is marked unusual only if it is higher or lower than in every one of those years. Prices from past years are first converted to today's dollars. An unusual figure is a reason to look closer, not proof of a problem.</div>
       </section>
       <StepFoot n={2} />
@@ -98,12 +124,37 @@ export function IndicatorDetail({ id, product }: { id: string; product?: string 
           <StateChip state={i.headline.state} direction={i.headline.direction} />
         </div>
         <p style={{ fontSize: "1.1rem" }}>{i.headline.text}</p>
+        <div className="cue" style={{ marginBottom: 6 }}><Trend t={i.headline.trend} freq={i.frequency} /><Age t={i.headline.observation_end} freq={i.frequency} /></div>
         <p className="small muted">Period covered: <b>{i.headline.period_label}</b>. {srcs[0]?.retrieved_at && <>Collected {dateTime(srcs[0].retrieved_at)}.</>}</p>
         {id === "weather_alerts" ? <p><a href={href("/threats/warnings?kind=weather_alert")}>See every alert in effect, on a map →</a></p> : <IndicatorChart id={id} kind={i.chart} initial={product} />}
         {id !== "weather_alerts" && <p className="noprint"><button className="btn ghost" onClick={download}>Download these figures (spreadsheet file)</button></p>}
       </section>
 
-      {i.items && (
+      {id === "prairie_drought" && (
+        <section className="panel">
+          <h2>Where the drought is</h2>
+          <DroughtMap />
+        </section>
+      )}
+
+      {i.items && i.chart !== "produce" && (
+        <section className="panel">
+          <h2>Each series, latest reading</h2>
+          <div className="tablewrap"><table className="data">
+            <thead><tr><th>Series</th><th className="num">Latest</th><th>Period</th><th className="num">Typical for the time of year</th><th className="num">Change from a year earlier</th><th>Recent trend</th><th>For the time of year</th></tr></thead>
+            <tbody>{i.items.map((p: any) => (
+              <tr key={p.id}><td><a href={href(`/indicators/${id}?product=${p.id}`)}>{p.label}</a></td>
+                <td className="num">{fmtV(p.value, p.unit)}</td><td className="small">{p.period}</td>
+                <td className="num">{p.median == null ? "—" : fmtV(p.median, p.unit)}{p.inflation_adjusted && p.median != null && <div className="small muted">in today's dollars</div>}</td>
+                <td className="num">{p.vs_year_ago_pct == null ? "—" : `${p.vs_year_ago_pct > 0 ? "+" : ""}${p.vs_year_ago_pct}%`}</td>
+                <td><Spark values={p.spark} w={80} h={22} /></td>
+                <td><StateChip state={p.state} direction={p.direction} /> <span className="small muted">{p.n_years ? `based on ${p.n_years} past year${p.n_years === 1 ? "" : "s"}` : ""}</span></td></tr>))}</tbody>
+          </table></div>
+          <p className="small muted">“Typical” is the middle value of the same period in past years.{id !== "store_prices" && " Choose a series name to draw it on the chart above."}</p>
+        </section>
+      )}
+
+      {i.items && i.chart === "produce" && (
         <section className="panel">
           <h2>Each product in the latest week</h2>
           <div className="tablewrap"><table className="data">

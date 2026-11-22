@@ -5,18 +5,25 @@ export const STEPS = [
   { n: 1, path: "/system", title: "The system", q: "How does food move through Canada, and where can it get stuck?",
     blurb: "A simple map of the chain from farm supplies to grocery stores, with the weak points marked." },
   { n: 2, path: "/indicators", title: "The indicators", q: "How exposed is each link, and what do the latest figures show?",
-    blurb: "Twelve facts that show where Canada has little backup, and official data updated automatically." },
+    blurb: "Twelve facts that show where Canada has little backup, and twenty sets of official figures updated automatically." },
   { n: 3, path: "/threats", title: "The threats", q: "What could go wrong, and is anything happening now?",
-    blurb: "Eighteen threats, current warnings at home and abroad, and seven tests of what acting early could save." },
+    blurb: "Ongoing disruptions, eighteen threats, current warnings at home and abroad, and seven tests of what acting early could save." },
   { n: 4, path: "/timelines", title: "Possible timelines", q: "How could a bad year unfold, and when is there still time to act?",
     blurb: "Four month-by-month stories of threats arriving together, and what a bad year could cost." },
 ];
 
 /* Where each live data series sits in the system map. */
 export const LIVE_NODE: Record<string, string> = {
-  weather_alerts: "farms", grain_stocks: "transport", grain_exports: "exports",
-  produce_prices: "imports", food_affordability: "stores", food_recalls: "processing",
+  world_fertilizer: "inputs", farm_inputs: "inputs", diesel: "inputs", sea_lanes: "inputs",
+  weather_alerts: "farms", prairie_drought: "farms",
+  grain_stocks: "transport", rail_freight: "transport", work_stoppages: "transport",
+  food_recalls: "processing",
+  food_affordability: "stores", store_prices: "stores", provincial_prices: "stores", food_insecurity: "stores",
+  grain_exports: "exports", ports: "exports",
+  produce_prices: "imports", us_drought: "imports", exchange_rate: "imports", world_prices: "imports",
 };
+/* Order of the links in the food chain, for the "at a glance" strip. */
+export const NODE_ORDER = ["inputs", "farms", "transport", "processing", "stores", "exports", "imports"];
 /* Register paths (from the original stress-test site) mapped to system-map nodes. */
 export const PATH_TO_NODE: Record<string, string> = {
   inputs: "inputs", prod: "farms", logistics: "transport", labour: "processing",
@@ -36,11 +43,11 @@ export const TEST_TITLE: Record<string, string> = {
 
 /* Live indicators that bear on each test, shown beside it. */
 export const TEST_LIVE: Record<string, { ind?: string[]; text: string; link?: string; label?: string }> = {
-  rail: { ind: ["grain_exports", "grain_stocks"], text: "How much grain is moving through the ports, and how much is in storage." },
-  drought: { ind: ["weather_alerts"], text: "Weather warnings in effect now. Drought itself is mapped monthly by Agriculture and Agri-Food Canada's Canadian Drought Monitor, which we have not yet connected." },
-  phosphate: { text: "Where Canada's fertilizer imports come from, and whether a disaster abroad has hit a supplier.", link: "/threats/abroad", label: "See disasters abroad" },
+  rail: { ind: ["grain_exports", "grain_stocks", "rail_freight", "ports", "work_stoppages"], text: "How much grain is moving by rail and through the ports, how much is in storage, and whether strikes are under way." },
+  drought: { ind: ["prairie_drought", "weather_alerts", "us_drought"], text: "How much Prairie farmland is in drought (Agriculture and Agri-Food Canada's Canadian Drought Monitor), weather warnings in effect now, and drought where imported produce grows." },
+  phosphate: { ind: ["world_fertilizer", "farm_inputs", "sea_lanes"], text: "World fertilizer prices, what Canadian farmers pay, and shipping through the Strait of Hormuz, which has been largely closed since 28 February 2026.", link: "/threats/ongoing", label: "See the ongoing Hormuz disruption" },
   "avian-flu": { text: "Announcements from the Canadian Food Inspection Agency appear with the current warnings. Its outbreak counts are not yet connected.", link: "/threats/warnings", label: "See current warnings" },
-  export: { text: "Government trade announcements appear with the current warnings.", link: "/threats/warnings", label: "See current warnings" },
+  export: { ind: ["grain_exports", "ports", "exchange_rate"], text: "Grain and cargo leaving Canada's ports, and the exchange rate. Government trade announcements appear with the current warnings.", link: "/threats/warnings", label: "See current warnings" },
   cyber: { text: "We do not yet have a live data source for this threat. Public cyber advisories rarely confirm an outage at a food business." },
   workforce: { text: "We do not yet have a live data source for this threat." },
 };

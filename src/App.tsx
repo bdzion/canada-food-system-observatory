@@ -10,6 +10,7 @@ import { IndicatorDetail, IndicatorList } from "./pages/Indicators";
 import Overview from "./pages/Overview";
 import System from "./pages/System";
 import { TestPage, ThreatsHub } from "./pages/Threats";
+import Ongoing from "./pages/Ongoing";
 import { BadYear, TimelinesPage } from "./pages/Timelines";
 
 const TITLES: Record<string, string> = {
@@ -31,10 +32,10 @@ export default function App() {
   let page;
   switch (sec) {
     case undefined: page = <Overview day={query.get("day") || undefined} />; break;
-    case "system": page = <System />; break;
+    case "system": page = <System key={query.get("node") || ""} node={query.get("node") || undefined} />; break;
     case "indicators": page = sub ? <IndicatorDetail id={sub} product={query.get("product") || undefined} /> : <IndicatorList />; break;
     case "threats":
-      page = !sub ? <ThreatsHub /> : sub === "warnings" ? <Events key={query.toString()} query={query} /> : sub === "abroad" ? <Exposure /> : <TestPage key={sub} k={sub} />;
+      page = !sub ? <ThreatsHub /> : sub === "warnings" ? <Events key={query.toString()} query={query} /> : sub === "abroad" ? <Exposure /> : sub === "ongoing" ? <Ongoing /> : <TestPage key={sub} k={sub} />;
       break;
     case "timelines":
       page = !sub ? <TimelinesPage /> : sub === "bad-year" ? <BadYear key={query.toString()} story={query.get("story") || undefined} /> : sub === "game" ? <Game /> : <p>Page not found.</p>;

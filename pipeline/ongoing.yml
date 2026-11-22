@@ -1,0 +1,62 @@
+# Ongoing disruptions: long-running events that the automatic feeds cannot name.
+#
+# The disaster feed (GDACS) covers natural hazards only, and our supplier check
+# covers direct imports only, so a war that closes a sea lane would otherwise be
+# invisible. Each entry is written by the observatory team from the published
+# sources listed, carries the date it was last reviewed, and is tied to live
+# indicators that show whether the disruption is still showing up in the data.
+# The site flags an entry whose review is overdue.
+
+disruptions:
+  - id: hormuz
+    title: The Strait of Hormuz is largely closed to shipping
+    since: "2026-02-28"
+    status: ongoing
+    last_reviewed: "2026-11-21"
+    review_every_days: 30
+    scenario: phosphate
+    live_check: {indicator: sea_lanes, item: chokepoint6, label: Ships through the Strait of Hormuz}
+    watch: [sea_lanes, world_fertilizer, farm_inputs, diesel, world_prices, exchange_rate]
+    summary:
+      - >-
+        On 28 February 2026, war involving Iran led to the near-closure of the Strait of Hormuz,
+        the narrow sea lane between Iran and the Arabian Peninsula.
+      - >-
+        UN Trade and Development (UNCTAD) reports that about a third of the world's seaborne fertilizer
+        trade and about a quarter of its seaborne oil normally pass through the strait, and that ship
+        transits fell by about 95% in March.
+      - >-
+        The World Bank reports that by April 2026 its fertilizer price index had reached its highest level
+        since October 2022. In September 2026, researchers writing for CGIAR reported that fertilizer
+        shipments out of the Persian Gulf remained largely halted.
+    reach:
+      - title: Fertilizer prices
+        text: >-
+          Canada mines more potash than any other country and makes much of its own nitrogen fertilizer, but
+          Canadian farmers pay world prices. In March 2026 The Western Producer reported that world urea
+          prices had jumped about 40%. Higher prices raise the cost of next year's crops.
+        kind: reported
+      - title: Phosphate fertilizer
+        text: >-
+          Sulphur from Gulf oil and gas plants is a raw material for phosphate fertilizer, so phosphate
+          prices can rise even where the fertilizer itself is not shipped through the strait.
+        kind: reported
+      - title: Fuel
+        text: >-
+          Higher oil prices feed into diesel for tractors, trucks and trains, and into the cost of
+          moving food.
+        kind: our_reading
+      - title: Possible gains
+        text: >-
+          Canadian potash and nitrogen producers may sell more abroad at higher prices. Gains and losses
+          will not fall on the same people.
+        kind: our_reading
+    sources:
+      - {publisher: UN Trade and Development (UNCTAD), date: "2026-03", title: "Hormuz shipping disruptions raise risks for energy, fertilizers and vulnerable economies", url: "https://www.unctad.org/news/hormuz-shipping-disruptions-raise-risks-energy-fertilizers-and-vulnerable-economies"}
+      - {publisher: UN Trade and Development (UNCTAD), date: "2026-04", title: "Hormuz disruption deepens global economic strain across trade, prices and finance", url: "https://unctad.org/news/hormuz-disruption-deepens-global-economic-strain-across-trade-prices-and-finance"}
+      - {publisher: World Bank Data Blog, date: "2026", title: "Fertilizer prices surge as Strait of Hormuz disruptions tighten supplies", url: "https://blogs.worldbank.org/en/opendata/fertilizer-prices-surge-as-strait-of-hormuz-disruptions-tighten-"}
+      - {publisher: "CGIAR (S. Arita, M. Wang and J. Glauber)", date: "2026-05-22", title: "How fertilizer policies could exacerbate Hormuz price shocks", url: "https://www.cgiar.org/news-events/news/how-fertilizer-policies-could-exacerbate-hormuz-price-shocks"}
+      - {publisher: "CGIAR (J. Glauber and S. Arita)", date: "2026-09-18", title: "How are fertilizer markets coping with the continued closure of the Strait of Hormuz?", url: "https://www.cgiar.org/news-events/news/how-are-fertilizer-markets-coping-continued-closure-strait-hormuz"}
+      - {publisher: "farmdoc daily (S. Arita and others)", date: "2026-03-23", title: "Strait of Hormuz closure and fertilizer supply risks for U.S. agriculture", url: "https://farmdocdaily.illinois.edu/2026/03/strait-of-hormuz-closure-and-fertilizer-supply-risks-for-us-agriculture.html"}
+      - {publisher: The Western Producer, date: "2026-03", title: "Iran war disrupts global fertilizer markets, spring planting", url: "https://www.producer.com/daily/iran-war-disrupts-global-fertilizer-markets-spring-planting/"}
+      - {publisher: The National, date: "2026-03-12", title: "Global fertiliser supply at risk amid Strait of Hormuz blockade", url: "https://www.thenationalnews.com/business/economy/2026/03/12/global-fertiliser-supply-at-risk-amid-strait-of-hormuz-blockade"}

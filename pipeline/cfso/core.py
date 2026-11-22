@@ -63,7 +63,8 @@ def client(timeout: float = 120.0) -> httpx.Client:
 
 
 def fetch(url: str, *, params: dict | None = None, method: str = "GET", json_body: Any = None,
-          attempts: int = 4, timeout: float = 180.0, dest: Path | None = None) -> bytes | Path:
+          attempts: int = 4, timeout: float = 180.0, dest: Path | None = None,
+          headers: dict | None = None) -> bytes | Path:
     """Fetch a URL with bounded retries and exponential back-off.
 
     If `dest` is given the body is streamed to that file (for large downloads)
@@ -74,10 +75,10 @@ def fetch(url: str, *, params: dict | None = None, method: str = "GET", json_bod
         try:
             with client(timeout) as c:
                 if dest is None:
-                    r = c.request(method, url, params=params, json=json_body)
+                    r = c.request(method, url, params=params, json=json_body, headers=headers)
                     r.raise_for_status()
                     return r.content
-                with c.stream(method, url, params=params, json=json_body) as r:
+                with c.stream(method, url, params=params, json=json_body, headers=headers) as r:
                     r.raise_for_status()
                     tmp = dest.with_suffix(dest.suffix + ".part")
                     with open(tmp, "wb") as f:

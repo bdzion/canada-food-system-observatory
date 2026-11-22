@@ -64,7 +64,7 @@ sources:
     licence_url: https://open.canada.ca/en/open-government-licence-canada
     evidence_class: observation
     expected_frequency: weekly
-    stale_after_days: 60
+    stale_after_days: 21
     browser_live: false
     status: validated_connector
 
@@ -127,3 +127,102 @@ sources:
     stale_after_days: 3
     browser_live: false
     status: prototype_connector
+
+  # ---------------------------------------------------------- added in release 2
+  - id: CA-08
+    provider: Statistics Canada
+    dataset: "Fuel prices (18-10-0001), retail food prices (18-10-0245), farm input prices (18-10-0258), rail freight (23-10-0216), grocery prices by province (18-10-0004), food insecurity (13-10-0835) and work stoppages (14-10-0350)"
+    documentation_url: https://www.statcan.gc.ca/en/developers/wds/user-guide
+    endpoint: https://www150.statcan.gc.ca/t1/wds/rest/getDataFromCubePidCoordAndLatestNPeriods
+    access_type: rest_json
+    licence: Statistics Canada Open Licence
+    licence_url: https://www.statcan.gc.ca/en/reference/licence
+    evidence_class: observation
+    expected_frequency: monthly
+    stale_after_days: 100
+    browser_live: false
+    status: validated_connector
+
+  - id: CA-09
+    provider: Agriculture and Agri-Food Canada
+    dataset: Canadian Drought Monitor (monthly drought areas)
+    documentation_url: https://agriculture.canada.ca/en/agricultural-production/weather/canadian-drought-monitor
+    endpoint: https://agriculture.canada.ca/atlas/data_donnees/canadianDroughtMonitor/data_donnees/geoJSON/areasofDrought/
+    access_type: zipped_geojson
+    licence: Open Government Licence – Canada
+    licence_url: https://open.canada.ca/en/open-government-licence-canada
+    evidence_class: observation
+    expected_frequency: monthly
+    stale_after_days: 75
+    browser_live: false
+    status: validated_connector
+
+  - id: CA-10
+    provider: Bank of Canada
+    dataset: Daily exchange rates (Valet API)
+    documentation_url: https://www.bankofcanada.ca/valet/docs
+    endpoint: https://www.bankofcanada.ca/valet/observations/{series}/json
+    access_type: rest_json
+    licence: Bank of Canada terms of use (free use with attribution)
+    licence_url: https://www.bankofcanada.ca/terms/
+    evidence_class: observation
+    expected_frequency: business_days
+    stale_after_days: 7
+    browser_live: false
+    status: validated_connector
+
+  - id: GL-03
+    provider: International Monetary Fund and University of Oxford (PortWatch)
+    dataset: Daily ship transits at sea-lane chokepoints and calls at Canadian ports, estimated from ship-tracking data
+    documentation_url: https://portwatch.imf.org/
+    endpoint: https://services9.arcgis.com/weJ1QsnbMYJlCHdG/arcgis/rest/services
+    access_type: arcgis_feature_service
+    licence: PortWatch terms of use (free use with attribution)
+    licence_url: https://portwatch.imf.org/pages/faq
+    evidence_class: observation
+    expected_frequency: weekly
+    stale_after_days: 14
+    browser_live: false
+    status: validated_connector
+
+  - id: GL-04
+    provider: World Bank
+    dataset: Commodity prices, monthly (the "Pink Sheet")
+    documentation_url: https://www.worldbank.org/en/research/commodity-markets
+    endpoint: https://www.worldbank.org/en/research/commodity-markets
+    access_type: xlsx_download
+    licence: Creative Commons Attribution 4.0 (CC BY 4.0)
+    licence_url: https://datacatalog.worldbank.org/public-licenses
+    evidence_class: observation
+    expected_frequency: monthly
+    stale_after_days: 70
+    browser_live: false
+    status: validated_connector
+
+  - id: GL-05
+    provider: National Drought Mitigation Center, USDA and NOAA
+    dataset: US Drought Monitor, weekly statistics by state
+    documentation_url: https://droughtmonitor.unl.edu/DmData/DataDownload/WebServiceInfo.aspx
+    endpoint: https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByAreaPercent
+    access_type: rest_json
+    licence: Public domain (US government work); credit requested
+    licence_url: https://droughtmonitor.unl.edu/About/ContactUs.aspx
+    evidence_class: observation
+    expected_frequency: weekly
+    stale_after_days: 14
+    browser_live: false
+    status: validated_connector
+
+  - id: GL-06
+    provider: US National Weather Service
+    dataset: Active weather alerts in California, Arizona, Florida and Washington
+    documentation_url: https://www.weather.gov/documentation/services-web-api
+    endpoint: https://api.weather.gov/alerts/active
+    access_type: rest_geojson
+    licence: Public domain (US government work)
+    licence_url: https://www.weather.gov/disclaimer
+    evidence_class: official_alert
+    expected_frequency: continuous
+    stale_after_days: 1
+    browser_live: false
+    status: validated_connector

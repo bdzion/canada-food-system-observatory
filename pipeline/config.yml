@@ -177,3 +177,138 @@ exposure:
     - {hs: "1701", label: "Cane and beet sugar", group: staples, scenario: ""}
     - {hs: "1511", label: "Palm oil", group: staples, scenario: ""}
     - {hs: "0306", label: "Crustaceans (incl. shrimp)", group: protein, scenario: ""}
+
+# ---------------------------------------------------------------- added in release 2
+# More Statistics Canada series. Each group is fetched separately, so one failing
+# table does not block the others. Coordinates follow the table's dimension order.
+statcan_groups:
+  diesel:
+    product: 18100001
+    months: 96
+    # No Canada-wide average is published for diesel, so we follow five cities.
+    series:
+      montreal: {coordinate: "7.6.0.0.0.0.0.0.0.0", label: "Montréal", unit: "cents per litre"}
+      toronto: {coordinate: "9.6.0.0.0.0.0.0.0.0", label: "Toronto", unit: "cents per litre"}
+      regina: {coordinate: "12.6.0.0.0.0.0.0.0.0", label: "Regina", unit: "cents per litre"}
+      calgary: {coordinate: "15.6.0.0.0.0.0.0.0.0", label: "Calgary", unit: "cents per litre"}
+      vancouver: {coordinate: "16.6.0.0.0.0.0.0.0.0", label: "Vancouver", unit: "cents per litre"}
+  farm_inputs:
+    product: 18100258
+    months: 40
+    series:
+      total: {coordinate: "1.1.0.0.0.0.0.0.0.0", label: "All farm inputs", unit: "index"}
+      fertilizer: {coordinate: "1.12.0.0.0.0.0.0.0.0", label: "Fertilizer", unit: "index"}
+      nitrogen: {coordinate: "1.13.0.0.0.0.0.0.0.0", label: "Nitrogen fertilizer", unit: "index"}
+      fuel: {coordinate: "1.7.0.0.0.0.0.0.0.0", label: "Machinery fuel", unit: "index"}
+  retail:
+    product: 18100245
+    months: 84
+    series:
+      ground_beef: {coordinate: "11.4.0.0.0.0.0.0.0.0", label: "Ground beef, per kilogram", unit: "dollars"}
+      chicken: {coordinate: "11.7.0.0.0.0.0.0.0.0", label: "Whole chicken, per kilogram", unit: "dollars"}
+      milk: {coordinate: "11.15.0.0.0.0.0.0.0.0", label: "Milk, 4 litres", unit: "dollars"}
+      eggs: {coordinate: "11.20.0.0.0.0.0.0.0.0", label: "Eggs, 1 dozen", unit: "dollars"}
+      bread: {coordinate: "11.56.0.0.0.0.0.0.0.0", label: "White bread, 675 grams", unit: "dollars"}
+      rice: {coordinate: "11.94.0.0.0.0.0.0.0.0", label: "White rice, 2 kilograms", unit: "dollars"}
+      pasta: {coordinate: "11.57.0.0.0.0.0.0.0.0", label: "Pasta, 500 grams", unit: "dollars"}
+      potatoes: {coordinate: "11.30.0.0.0.0.0.0.0.0", label: "Potatoes, 4.54 kilograms", unit: "dollars"}
+      apples: {coordinate: "11.21.0.0.0.0.0.0.0.0", label: "Apples, per kilogram", unit: "dollars"}
+      bananas: {coordinate: "11.24.0.0.0.0.0.0.0.0", label: "Bananas, per kilogram", unit: "dollars"}
+      tomatoes: {coordinate: "11.31.0.0.0.0.0.0.0.0", label: "Tomatoes, per kilogram", unit: "dollars"}
+      lettuce: {coordinate: "11.48.0.0.0.0.0.0.0.0", label: "Iceberg lettuce, each", unit: "dollars"}
+      carrots: {coordinate: "11.33.0.0.0.0.0.0.0.0", label: "Carrots, 1.36 kilograms", unit: "dollars"}
+      canola_oil: {coordinate: "11.95.0.0.0.0.0.0.0.0", label: "Canola oil, 3 litres", unit: "dollars"}
+      infant_formula: {coordinate: "11.97.0.0.0.0.0.0.0.0", label: "Infant formula, 900 grams", unit: "dollars"}
+  rail:
+    product: 23100216
+    months: 96
+    series:
+      total: {coordinate: "1.1.2.0.0.0.0.0.0.0", label: "All rail freight", unit: "tonnes"}
+      wheat: {coordinate: "1.3.2.0.0.0.0.0.0.0", label: "Wheat", unit: "tonnes"}
+      grains: {coordinate: "1.4.2.0.0.0.0.0.0.0", label: "Other cereal grains", unit: "tonnes"}
+      canola: {coordinate: "1.7.2.0.0.0.0.0.0.0", label: "Canola", unit: "tonnes"}
+      potash: {coordinate: "1.37.2.0.0.0.0.0.0.0", label: "Potash", unit: "tonnes"}
+      fertilizers: {coordinate: "1.38.2.0.0.0.0.0.0.0", label: "Other fertilizers", unit: "tonnes"}
+  provinces_food_cpi:
+    product: 18100004
+    months: 30
+    series:
+      NL: {coordinate: "3.4.0.0.0.0.0.0.0.0", label: "Newfoundland and Labrador", unit: "index"}
+      PE: {coordinate: "5.4.0.0.0.0.0.0.0.0", label: "Prince Edward Island", unit: "index"}
+      NS: {coordinate: "7.4.0.0.0.0.0.0.0.0", label: "Nova Scotia", unit: "index"}
+      NB: {coordinate: "9.4.0.0.0.0.0.0.0.0", label: "New Brunswick", unit: "index"}
+      QC: {coordinate: "11.4.0.0.0.0.0.0.0.0", label: "Quebec", unit: "index"}
+      "ON": {coordinate: "14.4.0.0.0.0.0.0.0.0", label: "Ontario", unit: "index"}
+      MB: {coordinate: "18.4.0.0.0.0.0.0.0.0", label: "Manitoba", unit: "index"}
+      SK: {coordinate: "20.4.0.0.0.0.0.0.0.0", label: "Saskatchewan", unit: "index"}
+      AB: {coordinate: "23.4.0.0.0.0.0.0.0.0", label: "Alberta", unit: "index"}
+      BC: {coordinate: "26.4.0.0.0.0.0.0.0.0", label: "British Columbia", unit: "index"}
+  food_insecurity:
+    product: 13100835
+    months: 12
+    series:
+      any: {coordinate: "1.1.6.2.0.0.0.0.0.0", label: "All people living in food-insecure households", unit: "percent"}
+      mod_sev: {coordinate: "1.1.3.2.0.0.0.0.0.0", label: "Moderate or severe food insecurity", unit: "percent"}
+      children: {coordinate: "1.2.6.2.0.0.0.0.0.0", label: "Children under 18 in food-insecure households", unit: "percent"}
+  stoppages:
+    product: 14100350
+    months: 96
+    series:
+      all: {coordinate: "1.1.1.1.0.0.0.0.0.0", label: "All industries", unit: "work stoppages"}
+      transport: {coordinate: "1.7.1.1.0.0.0.0.0.0", label: "Transportation", unit: "work stoppages"}
+      manufacturing: {coordinate: "1.5.1.1.0.0.0.0.0.0", label: "Manufacturing (incl. food processing)", unit: "work stoppages"}
+      days_lost: {coordinate: "1.1.1.4.0.0.0.0.0.0", label: "Person-days not worked, all industries", unit: "person-days"}
+
+portwatch:
+  chokepoints:
+    chokepoint6: Strait of Hormuz
+    chokepoint2: Panama Canal
+    chokepoint1: Suez Canal
+    chokepoint4: Bab el-Mandeb Strait
+  ports:
+    port1350: Vancouver
+    port1021: Prince Rupert
+    port766: Montreal
+    port443: Halifax
+    port1295: Thunder Bay
+  start: "2019-01-01"
+
+worldbank:
+  page: https://www.worldbank.org/en/research/commodity-markets
+  prices:
+    dap: {column: "DAP", label: "DAP (phosphate fertilizer)", unit: "US$ per tonne"}
+    urea: {column: "Urea", label: "Urea (nitrogen fertilizer)", unit: "US$ per tonne"}
+    potash: {column: "Potassium chloride", label: "Potash", unit: "US$ per tonne"}
+    phosphate_rock: {column: "Phosphate rock", label: "Phosphate rock", unit: "US$ per tonne"}
+    crude: {column: "Crude oil, average", label: "Crude oil (average of three benchmarks)", unit: "US$ per barrel"}
+    wheat: {column: "Wheat, US HRW", label: "Wheat (US hard red winter)", unit: "US$ per tonne"}
+    maize: {column: "Maize", label: "Maize (corn)", unit: "US$ per tonne"}
+  indices:
+    food: {column: "Food", label: "World food prices", unit: "index (2010 = 100)"}
+    fertilizers: {column: "Fertilizers", label: "World fertilizer prices", unit: "index (2010 = 100)"}
+    energy: {column: "Energy", label: "World energy prices", unit: "index (2010 = 100)"}
+
+boc:
+  series:
+    FXUSDCAD: {label: "Canadian dollars per US dollar", unit: "CAD per USD"}
+    FXMXNCAD: {label: "Canadian dollars per Mexican peso", unit: "CAD per MXN"}
+  start: "2019-01-01"
+
+cdm:
+  base: https://agriculture.canada.ca/atlas/data_donnees/canadianDroughtMonitor/data_donnees/geoJSON/areasofDrought/
+  first_year: 2023
+  # Approximate agricultural zones of the Prairie provinces: south of 54°N between
+  # straight-line longitudes. Documented as an approximation on the site.
+  zones:
+    AB: {label: "Alberta (south of 54°N)", bbox: [-120.0, 49.0, -110.0, 54.0]}
+    SK: {label: "Saskatchewan (south of 54°N)", bbox: [-110.0, 49.0, -101.4, 54.0]}
+    MB: {label: "Manitoba (south of 54°N)", bbox: [-101.4, 49.0, -95.2, 54.0]}
+
+us_growing:
+  # US states that supply most of Canada's imported fresh fruit and vegetables.
+  states:
+    CA: {fips: "06", label: "California", why: "lettuce, strawberries, broccoli, oranges"}
+    AZ: {fips: "04", label: "Arizona", why: "winter lettuce and leafy greens"}
+    FL: {fips: "12", label: "Florida", why: "winter tomatoes, peppers and citrus"}
+    WA: {fips: "53", label: "Washington", why: "apples and pears"}
+  crop_alerts: [Freeze, Frost, Hard Freeze, Extreme Cold, Excessive Heat, Extreme Heat, Heat, Flood, Flash Flood, High Wind, Red Flag, Fire, Dust Storm, Winter Storm, Tropical Storm, Hurricane]

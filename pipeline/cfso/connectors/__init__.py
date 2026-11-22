@@ -1,5 +1,6 @@
 """One module per official source. Each exposes run(previous=None) -> extract dict."""
-from . import cgc, comtrade, gcnews, gdacs, geomet, infohort, recalls, statcan
+from . import (boc, cdm, cgc, comtrade, gcnews, gdacs, geomet, infohort, nws, portwatch, recalls,
+               statcan, statcan_more, usdm, worldbank)
 
 # Source ID -> (module, minimum hours between refreshes). Annual trade data
 # does not need checking several times a day.
@@ -12,4 +13,12 @@ CONNECTORS = {
     "CA-07": (gcnews, 0),
     "GL-01": (comtrade, 24 * 14),
     "GL-02": (gdacs, 0),
+    # Added in release 2.
+    "CA-08": (statcan_more, 6),
+    "CA-09": (cdm, 12),
+    "CA-10": (boc, 0),
+    "GL-03": (portwatch, 0),
+    "GL-04": (worldbank, 24),
+    "GL-05": (usdm, 12),
+    "GL-06": (nws, 0),
 }

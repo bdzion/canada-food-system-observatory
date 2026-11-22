@@ -15,6 +15,12 @@ from __future__ import annotations
 
 from .core import config
 
+# Earthquakes and volcanic eruptions damage a small area, so a country-level
+# match means little unless the country supplies a large share. For these we
+# require a higher share before reporting a supplier connection.
+LOCAL_HAZARDS = {"Earthquake", "Volcanic eruption"}
+LOCAL_MIN_SHARE = 0.20
+
 LARGE = {"USA", "CHN", "IND", "BRA", "RUS", "AUS", "MEX", "ARG", "IDN", "KAZ", "COD", "DZA", "SAU", "SDN", "PER", "TUR", "IRN"}
 
 
@@ -30,10 +36,11 @@ def link_events(gdacs: dict | None, comtrade: dict | None, infohort: dict | None
     links = []
     for ev in gdacs["events"]:
         isos = {c["iso3"] for c in ev["countries"]}
+        need = max(thr, LOCAL_MIN_SHARE) if ev.get("event_type") in LOCAL_HAZARDS else thr
         hits = []
         for hs, c in comm.items():
             for p in c["partners"]:
-                if p["iso3"] in isos and p["share"] is not None and p["share"] >= thr:
+                if p["iso3"] in isos and p["share"] is not None and p["share"] >= need:
                     hits.append({"hs": hs, "label": c["label"], "group": c["group"], "country": p["name"],
                                  "iso3": p["iso3"], "share": p["share"], "year": c["year"],
                                  "scenario": c.get("scenario") or None})
