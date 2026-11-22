@@ -27,7 +27,7 @@ export default function System() {
     const b = byNode(id);
     const w = worst(id);
     return (
-      <button className={`sysnode${main && id !== "stores" ? " main" : ""}`} aria-pressed={sel === id} onClick={() => setSel(id)}>
+      <button className={`sysnode${main && id !== "stores" ? " main" : ""}`} aria-pressed={sel === id} onClick={() => { setSel(id); if (window.innerWidth < 900) setTimeout(() => document.getElementById("sys-detail")?.scrollIntoView({ behavior: "smooth" }), 50); }}>
         <b>{n.name}{w && <span className={`lvl ${w}`}>{w === "High" ? "high exposure" : "raised"}</span>}</b>
         <span className="what">{n.what}</span>
         <span className="counts">{b.weak.length} weak point{b.weak.length === 1 ? "" : "s"} · {b.threats.length} threat{b.threats.length === 1 ? "" : "s"} · {b.live.length} live figure{b.live.length === 1 ? "" : "s"}</span>
@@ -50,7 +50,7 @@ export default function System() {
         <p className="small muted" style={{ marginTop: 10 }}>A simplified picture of how food moves, not a model of actual quantities. Exposure ratings (“high”, “raised”) are the research team's judgement, based on the published facts in step 2.</p>
       </section>
 
-      <section className="panel" aria-live="polite">
+      <section className="panel" aria-live="polite" id="sys-detail">
         <div className="eyebrow">Selected link</div>
         <h2>{cur.name}</h2>
         <p>{cur.what}</p>
