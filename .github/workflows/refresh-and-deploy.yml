@@ -70,6 +70,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      actions: read     # lets the deploy step find the uploaded site
       pages: write
       id-token: write
     environment:
