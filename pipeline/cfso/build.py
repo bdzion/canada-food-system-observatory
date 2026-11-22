@@ -23,11 +23,6 @@ from .indicators import (affordability_indicator, grain_indicator, produce_indic
                          recalls_indicator, weather_indicator)
 from . import narrative
 
-SCENARIOS = {
-    "rail": "Rail or port shutdown", "phosphate": "Fertilizer supply cut", "drought": "Prairie drought",
-    "avian-flu": "Avian influenza", "export": "Export market closure", "cyber": "Cyberattack on food distribution",
-    "workforce": "Meat-plant workforce outbreak",
-}
 
 
 # ------------------------------------------------------------------ refresh
@@ -120,19 +115,25 @@ def build_indicators(ex: dict) -> tuple[list[dict], dict[str, dict]]:
         series[ind["id"]] = ser
 
     if "CA-05" in ex:
-        add(grain_indicator, ex["CA-05"], "stocks_total", ind_id="grain_stocks", title="Grain in commercial storage", role="buffer",
-            question="Is there more or less grain in Canada's commercial elevators and port terminals than usual for this point in the crop year?",
-            definition="Commercial stocks of all grains and oilseeds in licensed primary (country) elevators, process elevators and port terminals, from the Canadian Grain Commission's weekly statistics.",
-            how="Total stocks at the end of the latest grain week, compared with the same grain week in each of the previous crop years.",
-            not_show="Grain still on farms, which is most of Canada's grain, or food stocks further down the chain. High stocks can mean a comfortable buffer or grain that cannot move; read it with the exports line.",
-            sentence="Commercial elevators and port terminals held {v} million tonnes of grain in {span}.",
-            sub={"stocks_primary": "In Prairie primary (country) elevators", "stocks_ports": "In port terminals"})
-        add(grain_indicator, ex["CA-05"], "exports_week", ind_id="grain_exports", title="Grain moving out through ports", role="flow",
-            question="Is grain moving through Canada's export terminals at a normal pace?",
-            definition="Exports of all grains and oilseeds from licensed port terminals (Vancouver, Prince Rupert, Thunder Bay, the St. Lawrence and others), from the Canadian Grain Commission.",
-            how="Sum of the latest four grain weeks, compared with the same four weeks in each of the previous crop years. Four weeks smooth out vessel timing.",
-            not_show="Why the pace changed. Slower exports can reflect rail or port problems, weather, a smaller crop or weaker sales. Direct shipments by rail or container to the United States are not included.",
-            sentence="{v} million tonnes of grain were exported from port terminals in {span}.", rolling=4)
+        add(grain_indicator, ex["CA-05"], "stocks_total", ind_id="grain_stocks", title="Grain in storage", role="buffer",
+            question="Is there more or less grain in the country's elevators and ports than usual for this time of year?",
+            definition=("Wheat, canola and other grains held in licensed grain elevators across the Prairies and at port terminals, "
+                        "as reported each week by the Canadian Grain Commission."),
+            how=("We add up all grain in storage at the end of the latest week and compare the total with the same week "
+                 "in each of the past five crop years."),
+            not_show=("Grain still on farms, which is most of Canada's grain, and food further along the chain. A high number can mean "
+                      "a comfortable reserve, or grain that cannot move. Read it alongside grain shipped through ports."),
+            sentence="Grain elevators and port terminals held {v} million tonnes of grain in {span}.",
+            sub={"stocks_primary": "In country elevators on the Prairies", "stocks_ports": "In port terminals"})
+        add(grain_indicator, ex["CA-05"], "exports_week", ind_id="grain_exports", title="Grain shipped through ports", role="flow",
+            question="Is grain leaving Canada's ports at a normal pace?",
+            definition=("Grain and oilseeds shipped abroad from port terminals in Vancouver, Prince Rupert, Thunder Bay, "
+                        "the St. Lawrence and elsewhere, reported each week by the Canadian Grain Commission."),
+            how=("We add up the latest four weeks, because ships arrive unevenly, and compare the total with the same "
+                 "four weeks in each of the past five crop years."),
+            not_show=("Why the pace changed. A slowdown can come from rail or port problems, weather, a smaller harvest or weaker sales. "
+                      "Grain sent to the United States by rail or truck is not included."),
+            sentence="Ports shipped {v} million tonnes of grain abroad in {span}.", rolling=4)
     if "CA-03" in ex:
         add(produce_indicator, ex["CA-03"], ex.get("CA-04"))
     if "CA-04" in ex:
@@ -184,7 +185,7 @@ def build_events(ex: dict, links: list[dict]) -> dict:
         for e in gd["events"]:
             items.append({
                 "id": e["id"], "kind": "global_hazard", "evidence_class": "official_alert", "source_id": "GL-02",
-                "issuer": "GDACS", "title": e["name"], "event_type": e["event_type"], "alert_level": e["alert_level"],
+                "issuer": "Global Disaster Alert and Coordination System", "title": e["name"], "event_type": e["event_type"], "alert_level": e["alert_level"],
                 "date": e["from"], "end": e["to"], "is_current": e["is_current"],
                 "place": ", ".join(c["name"] for c in e["countries"][:6]) + (" and others" if len(e["countries"]) > 6 else ""),
                 "countries": e["countries"], "point": e["point"], "url": e["url"], "severity_text": e["severity_text"],

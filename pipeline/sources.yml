@@ -10,7 +10,7 @@
 sources:
   - id: CA-01
     provider: Environment and Climate Change Canada
-    dataset: Weather alerts (MSC GeoMet OGC API, collection weather-alerts)
+    dataset: Weather warnings, watches and advisories (GeoMet service)
     documentation_url: https://api.weather.gc.ca/openapi?f=html
     endpoint: https://api.weather.gc.ca/collections/weather-alerts/items
     access_type: ogc_api_features_geojson
@@ -24,7 +24,7 @@ sources:
 
   - id: CA-03
     provider: Agriculture and Agri-Food Canada
-    dataset: InfoHort Daily Wholesale Prices (55-week file and multi-year archives)
+    dataset: Daily wholesale prices of fruit and vegetables (InfoHort)
     documentation_url: https://open.canada.ca/data/dataset/920bc8e2-de26-4bf6-ac41-ed47962d0ff6
     endpoint: https://od-do.agr.gc.ca/DailyWholesalePrices_PrixDeGrossistesQuotidiens.csv
     archive_endpoints:
@@ -42,7 +42,7 @@ sources:
 
   - id: CA-04
     provider: Statistics Canada
-    dataset: Web Data Service — CPI (table 18-10-0004-01) and LFS wages (table 14-10-0063-01)
+    dataset: Consumer Price Index (table 18-10-0004-01) and Labour Force Survey wages (table 14-10-0063-01)
     documentation_url: https://www.statcan.gc.ca/en/developers/wds/user-guide
     endpoint: https://www150.statcan.gc.ca/t1/wds/rest/getDataFromCubePidCoordAndLatestNPeriods
     access_type: rest_json
@@ -56,7 +56,7 @@ sources:
 
   - id: CA-05
     provider: Canadian Grain Commission
-    dataset: Grain Statistics Weekly (crop-year CSV)
+    dataset: Weekly grain statistics
     documentation_url: https://www.grainscanada.gc.ca/en/grain-research/statistics/grain-statistics-weekly/
     endpoint: https://www.grainscanada.gc.ca/en/grain-research/statistics/grain-statistics-weekly/{crop_year}/gsw-shg-en.csv
     access_type: csv_download
@@ -69,8 +69,8 @@ sources:
     status: validated_connector
 
   - id: CA-06
-    provider: Government of Canada (Canadian Food Inspection Agency notices)
-    dataset: Recalls and Safety Alerts open data (CFIA food records)
+    provider: Canadian Food Inspection Agency
+    dataset: Food recalls and safety alerts (Government of Canada recalls website)
     documentation_url: https://open.canada.ca/data/dataset/d38de914-c94c-429b-8ab1-8776c31643e3
     endpoint: https://recalls-rappels.canada.ca/sites/default/files/opendata-donneesouvertes/HCRSAMOpenData.json
     access_type: json_download
@@ -84,7 +84,7 @@ sources:
 
   - id: CA-07
     provider: Government of Canada News Centre
-    dataset: News releases (AAFC, CFIA, Public Safety Canada) via the canada.ca news API
+    dataset: News releases from Agriculture and Agri-Food Canada, the Canadian Food Inspection Agency and Public Safety Canada
     documentation_url: https://www.canada.ca/en/news/subscribe-emails.html
     endpoint: https://api.io.canada.ca/io-server/gc/news/en/v2
     departments:
@@ -102,7 +102,7 @@ sources:
 
   - id: GL-01
     provider: United Nations Statistics Division
-    dataset: UN Comtrade public API (preview endpoint; annual HS imports reported by Canada)
+    dataset: "UN Comtrade: Canada's imports by country of origin (annual)"
     documentation_url: https://comtradeplus.un.org/
     endpoint: https://comtradeapi.un.org/public/v1/preview/C/A/HS
     access_type: rest_json
@@ -116,7 +116,7 @@ sources:
 
   - id: GL-02
     provider: Global Disaster Alert and Coordination System (UN OCHA and European Commission JRC)
-    dataset: GDACS event list API (orange and red alerts)
+    dataset: Serious (orange and red) disaster alerts worldwide
     documentation_url: https://www.gdacs.org/gdacsapi/swagger/index.html
     endpoint: https://www.gdacs.org/gdacsapi/api/events/geteventlist/SEARCH
     access_type: rest_geojson

@@ -36,21 +36,22 @@ export const pct = (v: number | null | undefined, d = 1) => (v == null ? "—" :
 export const usdM = (v: number) => `US$${(v / 1e6).toLocaleString("en-CA", { maximumFractionDigits: v >= 1e8 ? 0 : 1 })}M`;
 
 export const STATE: Record<string, [string, string]> = {
-  within_reference_range: ["Within usual range", "within"],
-  outside_reference_range_review: ["Outside usual range — review", "out"],
-  insufficient_data: ["Not enough history", "insufficient"],
-  official_notice_active: ["Official notices active", "notice"],
-  none_active: ["None in effect", "within"],
-  observed: ["Observed", "within"],
-  source_unavailable: ["Source unavailable", "insufficient"],
+  within_reference_range: ["Normal for the time of year", "within"],
+  outside_reference_range_review: ["Unusual for the time of year", "out"],
+  insufficient_data: ["Not enough past data", "insufficient"],
+  official_notice_active: ["Alerts in effect", "notice"],
+  none_active: ["No alerts in effect", "within"],
+  source_unavailable: ["Data unavailable", "insufficient"],
 };
+/* "Type of information" labels shown on every card. Colour is never the only cue: each has a word label. */
 export const EVIDENCE: Record<string, [string, string]> = {
-  observation: ["Observation", "A recorded value from a named data provider."],
-  official_alert: ["Official alert", "An authoritative notice of a hazard, issued by the named agency."],
-  official_notice: ["Official notice", "A government notice or announcement. It shows what was announced, not what effect followed."],
-  reported_event: ["Reported event", "Found in reporting; not yet corroborated."],
-  screening_signal: ["Screening signal", "A rule flagged this for a closer look. It is not a finding."],
-  scenario_output: ["Illustrative model", "Result of stated assumptions. Not a forecast."],
-  author_judgement: ["Preliminary author judgement", "The authors' own rating, not a measurement. A structured expert ranking would replace it."],
-  supplier_link: ["Supplier link (L1)", "Canada has imported this product from the affected country. Specific impact unknown."],
+  observation: ["Measured data", "A figure published by a government or international agency."],
+  official_alert: ["Official warning", "A warning issued by the agency named, such as Environment and Climate Change Canada."],
+  official_notice: ["Government notice", "A notice or announcement from a government department. It tells you what was announced, not what effect followed."],
+  reported_event: ["News report", "Found in news coverage and not yet confirmed."],
+  screening_signal: ["Unusual reading", "A figure outside its normal range for the time of year. A reason to look closer, not a finding."],
+  scenario_output: ["What-if illustration", "The result of a simple model with stated assumptions. Not a forecast."],
+  author_judgement: ["Our team's rating", "A rating made by the research team, not a measurement. It should be replaced by a structured review with experts."],
+  supplier_link: ["Canada buys from here", "Canada imports this product from the country affected. We do not yet know whether the disaster affects that supply."],
+  source_fact: ["Published fact", "A figure taken from the report or article named, checked on the date shown."],
 };

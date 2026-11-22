@@ -47,14 +47,14 @@ def link_events(gdacs: dict | None, comtrade: dict | None, infohort: dict | None
             "event_id": ev["id"],
             "level": level,
             "commodities": hits,
-            "phrase": ("Historical supplier connection identified; specific impact unknown."
-                       if hits else "No Canadian connection established from available data."),
+            "phrase": ("Canada buys from this country. We do not yet know whether this disaster affects that supply."
+                       if hits else "No direct link found: Canada buys little or none of the products we track from this country."),
             "next_evidence": ([
-                "Does the event overlap the regions that grow or ship these products? (L2)",
-                "Has a reliable source reported damage to production, ports or exports? (L3)",
-                "Do Canadian prices or import data show a change, beyond coincidence in timing? (L4)",
+                "Did the disaster hit the areas where these products are grown or shipped from?",
+                "Has a reliable source reported damage to farms, ports or exports?",
+                "Do Canadian prices or import figures show a change that the disaster explains?",
             ] if hits else [
-                "Canada may still be affected through world prices or shipping routes; this screen covers direct imports of tracked products only.",
+                "Canada could still feel it through world prices or shipping routes. This check covers only direct imports of the products we track.",
             ]),
         })
     return links

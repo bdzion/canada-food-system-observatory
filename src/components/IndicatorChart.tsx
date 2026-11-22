@@ -34,17 +34,17 @@ export function CropWeekChart({ d }: { d: any }) {
         </div>
       )}
       <Legend items={[
-        { label: `Crop year ${d.crop_year}`, color: "var(--act)" },
-        { label: `Crop year ${prevLabel}`, color: "var(--muted)", dash: true },
-        { label: `Range of ${d.prior_crop_years.length} previous crop years`, color: "var(--band)", box: true },
+        { label: `This crop year (${d.crop_year})`, color: "var(--act)" },
+        { label: `Last crop year (${prevLabel})`, color: "var(--muted)", dash: true },
+        { label: `Lowest to highest of the past ${d.prior_crop_years.length} crop years`, color: "var(--band)", box: true },
       ]} />
       <LineChart
         aria={`${s.label}, thousand tonnes by grain week, crop year ${d.crop_year} compared with earlier years`}
         xDomain={[1, 52]} xTicks={xTicks} yLabel="thousand tonnes"
-        yFmt={(v) => num(v)} xFmt={(w) => `Grain week ${w} (about ${shortDate(weekDate(w).toISOString())})`}
-        bands={[{ data: s.rows.map((r: any) => ({ x: r.w, lo: r.lo, hi: r.hi })), color: "var(--band)", label: "Earlier years' range" }]}
+        yFmt={(v) => num(v)} xFmt={(w) => `Week ${w} of the crop year (about ${shortDate(weekDate(w).toISOString())})`}
+        bands={[{ data: s.rows.map((r: any) => ({ x: r.w, lo: r.lo, hi: r.hi })), color: "var(--band)", label: "Past years (low to high)" }]}
         series={[
-          { id: "med", label: "Median of earlier years", color: "var(--muted)", dash: "1 3", width: 1.5, endLabel: false, data: s.rows.map((r: any) => ({ x: r.w, y: r.med })) },
+          { id: "med", label: "Typical year", color: "var(--muted)", dash: "1 3", width: 1.5, endLabel: false, data: s.rows.map((r: any) => ({ x: r.w, y: r.med })) },
           { id: "prev", label: prevLabel, color: "var(--muted)", dash: "6 4", width: 1.5, data: s.rows.map((r: any) => ({ x: r.w, y: r.prev })) },
           { id: "cur", label: d.crop_year, color: "var(--act)", width: 2.75, data: s.rows.map((r: any) => ({ x: r.w, y: r.v })) },
         ]}
@@ -69,18 +69,18 @@ export function ProduceChart({ d, initial }: { d: any; initial?: string }) {
       <select id="prodsel" value={sel} onChange={(e) => setSel(e.target.value)}>
         {d.series.map((x: any) => <option key={x.id} value={x.id}>{x.label}</option>)}
       </select>
-      <p className="small muted" style={{ marginTop: 6 }}>Toronto wholesale, per {s.package}. Origin: {s.origin}.</p>
+      <p className="small muted" style={{ marginTop: 6 }}>Toronto wholesale price per {s.package}.</p>
       <Legend items={[
-        { label: "This year: daily midpoint of low and high price", color: "var(--act)" },
-        { label: "Median of earlier years, same week", color: "var(--muted)", dash: true },
-        { label: `Earlier years' range (in ${d.ref_month ? monthYear(d.ref_month + "-01") : "current"} dollars)`, color: "var(--band)", box: true },
+        { label: "This year (daily price; the middle of the reported range)", color: "var(--act)" },
+        { label: "Typical price for the same week in past years", color: "var(--muted)", dash: true },
+        { label: `Lowest to highest in past years (in ${d.ref_month ? monthYear(d.ref_month + "-01") : "today's"} dollars)`, color: "var(--band)", box: true },
       ]} />
       <LineChart aria={`${s.label}: daily wholesale price compared with the range of earlier years`}
         xDomain={[x0, x1]} xTicks={ticks} yFmt={(v) => "$" + num(v, v < 10 ? 2 : 0)} yLabel="CAD per package"
         xFmt={(x) => shortDate(new Date(x * DAY).toISOString()) + " " + new Date(x * DAY).getUTCFullYear()}
-        bands={[{ data: band, color: "var(--band)", label: "Earlier years" }]}
+        bands={[{ data: band, color: "var(--band)", label: "Past years" }]}
         series={[
-          { id: "med", label: "Usual (median)", color: "var(--muted)", dash: "6 4", width: 1.5, data: med },
+          { id: "med", label: "Typical", color: "var(--muted)", dash: "6 4", width: 1.5, data: med },
           { id: "mid", label: "This year", color: "var(--act)", width: 2, data: pts.map((p: any) => ({ x: p.x, y: p.mid })) },
         ]} />
     </div>
@@ -94,17 +94,17 @@ export function AffordabilityChart({ d }: { d: any }) {
   return (
     <div>
       <Legend items={[
-        { label: "Food bought in stores (CPI)", color: "var(--base)" },
+        { label: "Grocery prices", color: "var(--base)" },
         { label: "Average hourly wage", color: "var(--act)", dash: true },
-        { label: "All-items CPI", color: "var(--muted)", dash: true },
+        { label: "All consumer prices", color: "var(--muted)", dash: true },
       ]} />
       <LineChart aria="Year-over-year change in store food prices, all prices and hourly wages, by month"
-        xDomain={[xs[0], xs[xs.length - 1]]} xTicks={ticks} zeroLine yLabel="% change from a year earlier"
+        xDomain={[xs[0], xs[xs.length - 1]]} xTicks={ticks} zeroLine yLabel="% change from the same month a year earlier"
         yFmt={(v) => v.toFixed(0) + "%"} xFmt={(i) => monthYear(rows[i].t)}
         series={[
-          { id: "all", label: "All items", color: "var(--muted)", dash: "1 3", width: 1.5, data: rows.map((r: any, i: number) => ({ x: i, y: r.all })) },
+          { id: "all", label: "All prices", color: "var(--muted)", dash: "1 3", width: 1.5, data: rows.map((r: any, i: number) => ({ x: i, y: r.all })) },
           { id: "wage", label: "Wages", color: "var(--act)", dash: "6 4", width: 2, data: rows.map((r: any, i: number) => ({ x: i, y: r.wage })) },
-          { id: "food", label: "Store food", color: "var(--base)", width: 2.5, data: rows.map((r: any, i: number) => ({ x: i, y: r.food })) },
+          { id: "food", label: "Groceries", color: "var(--base)", width: 2.5, data: rows.map((r: any, i: number) => ({ x: i, y: r.food })) },
         ]} />
     </div>
   );

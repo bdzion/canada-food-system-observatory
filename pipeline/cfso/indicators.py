@@ -10,8 +10,9 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import date, timedelta
 
-from .core import config, median, pct_change, reference_state, rnd
+from .core import config, median, pct_change, reference_state, rnd, words
 
+PLACE = {"US": "the United States", "MX": "Mexico", "CR": "Costa Rica", "CA": "Canada", "ON": "Ontario", "QC": "Quebec", "BC": "British Columbia"}
 MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August",
           "September", "October", "November", "December"]
 
@@ -35,16 +36,19 @@ def fmt_num(v: float | None, nd: int = 0) -> str:
 
 
 def compare_words(st: dict, what: str = "") -> str:
-    """Plain sentence for a reference comparison."""
+    """Plain sentence comparing one reading with the same time in past years."""
     n = st.get("n_years", 0)
     if st["state"] == "insufficient_data":
-        return f"Not enough comparable history to say whether this is usual (only {n} earlier year{'s' if n != 1 else ''} match)."
+        return "We do not have enough past years of comparable data to say whether this is normal."
     pct = st.get("vs_median_pct")
-    rel = "" if pct is None else (f"{abs(pct):.0f}% {'above' if pct > 0 else 'below'} the median" if abs(pct) >= 0.5 else "about the same as the median")
+    typical = ""
+    if pct is not None and abs(pct) >= 1:
+        typical = f" It is about {abs(pct):.0f}% {'above' if pct > 0 else 'below'} the typical level."
     if st["direction"] == "within":
-        return f"Within the range of the previous {n} years for this time of year{what} ({rel})."
+        return f"That is normal for this time of year: it is within the range of the past {words(n)} years{what}.{typical}"
     side = "higher" if st["direction"] == "above" else "lower"
-    return f"{side.capitalize()} than in any of the previous {n} years for this time of year{what} ({rel}). Worth a closer look; not by itself a sign of crisis."
+    return (f"That is {side} than at this time of year in any of the past {words(n)} years{what}.{typical} "
+            "Worth watching. One unusual reading does not mean a crisis.")
 
 
 # ------------------------------------------------------------------ grain (CGC)
@@ -94,18 +98,18 @@ def grain_indicator(ext: dict, measure: str, *, ind_id: str, title: str, role: s
                 "n": len(ref_v),
             })
         series.append({"id": m, "label": label, "rows": rows})
-    headline = {"state": "insufficient_data", "text": "No observation yet for this crop year."}
+    headline = {"state": "insufficient_data", "text": "No data yet for this crop year."}
     if latest_w:
         v = tables[measure][cur][latest_w]
         ref = [tables[measure].get(cy, {}).get(latest_w) for cy in prior]
         st = reference_state(v, ref, cfg["min_years"])
         prev = tables[measure].get(prior[0], {}).get(latest_w)
         wend = weeks_cur[str(latest_w)]["week_end"]
-        span = f"the {rolling} weeks to {long_date(wend)}" if rolling > 1 else f"the week ending {long_date(wend)}"
+        span = f"the four weeks to {long_date(wend)}" if rolling == 4 else (f"the {rolling} weeks to {long_date(wend)}" if rolling > 1 else f"the week ending {long_date(wend)}")
         headline = {
             **st,
             "value": v, "unit": "thousand tonnes",
-            "period_label": f"Crop year {cur}, grain week {latest_w} (week ending {long_date(wend)})",
+            "period_label": (f"Four weeks to {long_date(wend)}" if rolling > 1 else f"Week ending {long_date(wend)}"),
             "observation_end": wend,
             "prev_year_value": prev,
             "vs_prev_year_pct": rnd(pct_change(v, prev), 1),
@@ -115,7 +119,7 @@ def grain_indicator(ext: dict, measure: str, *, ind_id: str, title: str, role: s
         "id": ind_id, "title": title, "role": role, "question": question, "unit": "thousand tonnes",
         "source_ids": ["CA-05"], "frequency": "weekly", "definition": definition, "how_calculated": how,
         "does_not_show": not_show, "scenario": scenario, "chart": "cropweek", "headline": headline,
-        "baseline_rule": f"Same grain week in the previous {cfg['years']} crop years; at least {cfg['min_years']} needed.",
+        "baseline_rule": f"Compared with the same week in each of the past {cfg['years']} crop years (at least {cfg['min_years']} needed). A crop year runs from August to July.",
     }
     return ind, {"id": ind_id, "kind": "cropweek", "crop_year": cur, "prior_crop_years": prior,
                  "unit": "thousand tonnes", "series": series}
@@ -148,7 +152,7 @@ def produce_indicator(ext: dict, statcan: dict | None) -> tuple[dict, dict]:
     for sid, s in ext["series"].items():
         pts = s["points"]
         if not pts:
-            items.append({"id": sid, "label": s["label"], "state": "insufficient_data", "text": "No recent quotes."})
+            items.append({"id": sid, "label": s["label"], "state": "insufficient_data", "text": "No recent prices."})
             continue
         last = date.fromisoformat(pts[-1]["t"])
         ly, lw, _ = last.isocalendar()
@@ -172,12 +176,12 @@ def produce_indicator(ext: dict, statcan: dict | None) -> tuple[dict, dict]:
         counts[st["state"] + ("_" + st.get("direction", "") if st["state"].startswith("outside") else "")] += 1
         rng = f"${pts[-1]['lo']:.2f}" if pts[-1]["lo"] == pts[-1]["hi"] else f"${pts[-1]['lo']:.2f}–${pts[-1]['hi']:.2f}"
         items.append({
-            "id": sid, "label": s["label"], "short": f"{s['commodity'].lower()} ({s['province'] if s['country'] == 'CA' and s['province'] else s['country']})",
+            "id": sid, "label": s["label"], "short": f"{s['commodity'].lower()} from {PLACE.get(s['province'] if s['country'] == 'CA' and s['province'] else s['country'], s['country'])}",
             "package": s["package"], "origin": s["country"], "link": s.get("link") or None,
             "latest_date": pts[-1]["t"], "latest_range": rng, "week_mean": round(cur, 2),
             "vs_4wk_pct": rnd(pct_change(pts[-1]["mid"], ago4), 1),
             **st, "ref_years": ref_years,
-            "text": f"{rng} per {s['package']} on {long_date(pts[-1]['t'])}. " + compare_words(st, " (after adjusting for inflation)"),
+            "text": f"{rng} per {s['package']} on {long_date(pts[-1]['t'])}. " + compare_words(st, ", after allowing for inflation"),
         })
         # Seasonal reference band for the chart: per ISO week, in reference-month dollars.
         band = []
@@ -200,25 +204,29 @@ def produce_indicator(ext: dict, statcan: dict | None) -> tuple[dict, dict]:
     short = counts.get("insufficient_data", 0)
     n = len(items)
     obs_end = ext["observation_end"]
-    text = (f"Of {n} tracked wholesale prices in Toronto, {above} {'is' if above == 1 else 'are'} higher and "
-            f"{below} lower than in any recent year at this time of year, after adjusting for inflation; "
-            f"{within} {'is' if within == 1 else 'are'} within the usual range")
-    text += f", and {short} lack enough history to compare." if short else "."
+    def are(k: int) -> str:
+        return "is" if k == 1 else "are"
+    text = (f"We follow {n} fresh fruits and vegetables at the Toronto wholesale market. In the latest week, "
+            f"{words(above)} cost more and {words(below)} cost less than at this time of year in any recent year, after allowing for inflation. "
+            f"{words(within, True)} {are(within)} in {'its' if within == 1 else 'their'} normal range")
+    text += f", and for {words(short)} we do not have enough past data." if short else "."
     state = "outside_reference_range_review" if above + below else ("within_reference_range" if within else "insufficient_data")
     ind = {
-        "id": "produce_prices", "title": "Fresh produce wholesale prices", "role": "market",
-        "question": "Are fresh fruit and vegetable prices at the Toronto terminal market unusual for this time of year?",
-        "unit": "Canadian dollars per package", "source_ids": ["CA-03", "CA-04"], "frequency": "business days",
-        "definition": "Daily low and high wholesale prices for 12 exactly defined products (same market, variety, grade, origin and package every day), from AAFC InfoHort.",
-        "how_calculated": (f"For each product, the average of daily midpoints (low+high)/2 in the latest week is compared with the same ISO week in up to {cfg['years']} earlier years. "
-                           f"Earlier years are converted to {month_label(ref_month + '-01') if ref_month else 'current'} dollars with the all-items CPI (Statistics Canada table 18-10-0004-01). "
-                           "A product is flagged only if this week's price lies outside the full range of those years."),
-        "does_not_show": "Retail prices, other cities, or why a price moved. Wholesale quotes for one package type are not what households pay, and a price outside the usual range can reflect quality, supply timing or the exchange rate as well as a shock.",
+        "id": "produce_prices", "title": "Fresh fruit and vegetable prices", "role": "market",
+        "question": "Are fresh fruit and vegetable prices unusual for this time of year?",
+        "unit": "Canadian dollars per box or bag", "source_ids": ["CA-03", "CA-04"], "frequency": "business days",
+        "definition": ("Daily wholesale prices at the Toronto wholesale market for 12 fruits and vegetables, from Agriculture and Agri-Food Canada. "
+                       "Each product is always the same variety, grade, origin and box size, so its price can be compared over time."),
+        "how_calculated": (f"For each product we take the average price in the latest week and compare it with the same week in up to {cfg['years']} past years. "
+                           f"Past prices are first converted to {month_label(ref_month + '-01') if ref_month else 'today'}'s dollars using the Consumer Price Index, "
+                           "so inflation alone does not make today's prices look high. A product is flagged only if this week's price is above or below every past year."),
+        "does_not_show": ("What shoppers pay in stores, prices in other cities, or why a price changed. Weather where the food is grown, "
+                          "the exchange rate, quality and the timing of harvests all move wholesale prices."),
         "scenario": "", "chart": "produce",
         "headline": {"state": state, "above": above, "below": below, "within": within, "insufficient": short, "n": n,
-                     "observation_end": obs_end, "period_label": f"Latest quotes {long_date(obs_end)}", "text": text},
+                     "observation_end": obs_end, "period_label": f"Latest prices {long_date(obs_end)}", "text": text},
         "items": items,
-        "baseline_rule": f"Same ISO week, previous {cfg['years']} years, inflation-adjusted; at least {cfg['min_years']} years needed.",
+        "baseline_rule": f"Compared with the same week in up to {cfg['years']} past years, in today's dollars (at least {cfg['min_years']} years needed).",
     }
     return ind, {"id": "produce_prices", "kind": "produce", "ref_month": ref_month, "series": payload}
 
@@ -245,7 +253,7 @@ def affordability_indicator(ext: dict) -> tuple[dict, dict]:
     rows = [{"t": m + "-01", "food": food.get(m), "all": allc.get(m), "wage": wage.get(m),
              "gap": rnd(food[m] - wage[m], 1) if m in food and m in wage else None} for m in months]
     common = [r for r in rows if r["gap"] is not None]
-    headline = {"state": "insufficient_data", "text": "No common month for food prices and wages yet."}
+    headline = {"state": "insufficient_data", "text": "Prices and wages do not yet share a common month of data."}
     if common:
         r = common[-1]
         faster = r["gap"] > 0
@@ -260,20 +268,22 @@ def affordability_indicator(ext: dict) -> tuple[dict, dict]:
             "food_yoy": r["food"], "wage_yoy": r["wage"], "all_yoy": r["all"],
             "observation_end": r["t"], "period_label": month_label(r["t"]), "streak_months": streak,
             "direction": "food_faster" if faster else "wages_faster",
-            "text": (f"In {month_label(r['t'])}, prices of food bought in stores were {r['food']:+.1f}% on a year earlier; "
-                     f"average hourly wages were {r['wage']:+.1f}%. "
-                     + (f"Food prices have risen faster than wages for {streak} month{'s' if streak != 1 else ''} in a row."
-                        if faster else f"Wages have risen faster than store food prices for {streak} month{'s' if streak != 1 else ''} in a row.")),
+            "text": (f"In {month_label(r['t'])}, grocery prices were {abs(r['food']):.1f}% {'higher' if r['food'] >= 0 else 'lower'} than a year earlier, "
+                     f"and average hourly wages were {abs(r['wage']):.1f}% {'higher' if r['wage'] >= 0 else 'lower'}. "
+                     + (f"Grocery prices have risen faster than wages for {words(streak)} month{'s' if streak != 1 else ''} in a row."
+                        if faster else f"Wages have risen faster than grocery prices for {words(streak)} month{'s' if streak != 1 else ''} in a row.")),
         }
     ind = {
-        "id": "food_affordability", "title": "Food prices compared with wages", "role": "access",
+        "id": "food_affordability", "title": "Grocery prices compared with wages", "role": "access",
         "question": "Are grocery prices rising faster than what people earn?",
         "unit": "percentage points", "source_ids": ["CA-04"], "frequency": "monthly",
-        "definition": "Year-over-year change in the Consumer Price Index for food purchased from stores (Canada, table 18-10-0004-01) compared with the year-over-year change in the average hourly wage rate of employees (Labour Force Survey, table 14-10-0063-01).",
-        "how_calculated": "Each series' change from the same month a year earlier, computed here from the published values. The gap is food change minus wage change, in percentage points.",
-        "does_not_show": "Who is affected. Averages hide households without wages (pensions, social assistance), regional differences and the many people for whom food takes a larger share of income. Wages here are not seasonally adjusted, so they are compared only with the same month a year earlier.",
+        "definition": ("How much grocery prices changed over 12 months (Statistics Canada's Consumer Price Index for food bought in stores), "
+                       "set against how much the average hourly wage changed over the same 12 months (Statistics Canada's Labour Force Survey)."),
+        "how_calculated": "For each month we compare prices and wages with the same month a year earlier. The gap is the difference between the two changes, in percentage points.",
+        "does_not_show": ("Who is struggling. National averages hide people without wages, such as pensioners and people on income support, "
+                          "differences between regions, and households that spend a larger share of their income on food."),
         "scenario": "", "chart": "affordability", "headline": headline,
-        "baseline_rule": "Same month one year earlier.",
+        "baseline_rule": "Compared with the same month one year earlier.",
     }
     return ind, {"id": "food_affordability", "kind": "monthly", "rows": rows[-72:]}
 
@@ -313,17 +323,18 @@ def recalls_indicator(ext: dict, today: date) -> tuple[dict, dict]:
         **st, "value": cur, "unit": "recalls",
         "observation_end": end.isoformat(), "period_label": f"{win} days to {long_date(end.isoformat())}",
         "by_hazard": dict(sorted(by_h.items(), key=lambda x: -x[1])),
-        "text": f"{cur} CFIA food recall notice{'s' if cur != 1 else ''} in the {win} days to {long_date(end.isoformat())}. " + compare_words(st),
+        "text": f"The Canadian Food Inspection Agency issued {cur} food recall notice{'s' if cur != 1 else ''} in the {win} days to {long_date(end.isoformat())}. " + compare_words(st),
     }
     ind = {
         "id": "food_recalls", "title": "Food recalls", "role": "signal",
-        "question": "Are food safety recalls more frequent than usual?",
+        "question": "Is the Canadian Food Inspection Agency recalling more food than usual?",
         "unit": "recall notices", "source_ids": ["CA-06"], "frequency": "daily",
-        "definition": "Recall and safety-alert notices issued by the Canadian Food Inspection Agency, from the Government of Canada Recalls and Safety Alerts open data.",
-        "how_calculated": f"Count of unique CFIA notices whose 'last updated' date falls in the latest {win} days, compared with the same {win}-day window in each of the previous {cfg['baseline']['years']} years.",
-        "does_not_show": "How much food was affected or whether supply was disrupted. Most recalls are narrow (one brand, one lot). The open data give the date a notice was last updated, not first issued, so counts are approximate.",
+        "definition": "Food recall and safety notices from the Canadian Food Inspection Agency, published on the Government of Canada's recalls website.",
+        "how_calculated": f"We count notices in the latest {win} days and compare the count with the same {win} days in each of the past {cfg['baseline']['years']} years.",
+        "does_not_show": ("How much food was affected. Most recalls cover one brand or one batch and do not affect supply. "
+                          "The data give the date a notice was last updated, not first issued, so counts are approximate."),
         "scenario": "", "chart": "weekly_counts", "headline": headline,
-        "baseline_rule": f"Same {win}-day window in the previous {cfg['baseline']['years']} years.",
+        "baseline_rule": f"Compared with the same {win} days in each of the past {cfg['baseline']['years']} years.",
     }
     return ind, {"id": "food_recalls", "kind": "weekly_counts", "unit": "notices per week", "rows": weeks}
 
@@ -339,21 +350,24 @@ def weather_indicator(ext: dict) -> tuple[dict, dict]:
         by_prov[a["province"] or "?"] += 1
         by_type[a["type"]] += 1
     warn = [a for a in alerts if a.get("alert_type") == "warning"]
-    text = (f"{len(alerts)} official weather alert{'s' if len(alerts) != 1 else ''} in effect when last checked "
-            f"({len(warn)} warning{'s' if len(warn) != 1 else ''}), in {len(by_prov)} province{'s' if len(by_prov) != 1 else ''} or territor{'ies' if len(by_prov) != 1 else 'y'}.")
+    np_ = len(by_prov)
+    text = (f"{words(len(alerts), True)} weather alert{'s' if len(alerts) != 1 else ''} {'was' if len(alerts) == 1 else 'were'} in effect in {words(np_)} "
+            f"province{'s' if np_ != 1 else ''} or territor{'ies' if np_ != 1 else 'y'} when we last checked, "
+            f"including {words(len(warn))} warning{'s' if len(warn) != 1 else ''}.")
     if not alerts:
-        text = "No official weather alerts were in effect when last checked."
+        text = "No weather alerts were in effect when we last checked."
     ind = {
-        "id": "weather_alerts", "title": "Official weather alerts", "role": "signal",
-        "question": "Which official weather alerts are in effect now, and where?",
+        "id": "weather_alerts", "title": "Weather warnings", "role": "signal",
+        "question": "Which weather warnings are in effect, and where?",
         "unit": "alerts", "source_ids": ["CA-01"], "frequency": "continuous",
-        "definition": "Warnings, watches, advisories and statements issued by Environment and Climate Change Canada, from the MSC GeoMet weather-alerts collection. Alerts for the same type, province and issue time are grouped.",
-        "how_calculated": "Alerts whose expiry time is still in the future. The page also re-checks GeoMet live in your browser and says which version you are seeing.",
-        "does_not_show": "Whether farms, crops or transport are actually affected. Alert areas are forecast regions, not farmland, and we have not yet intersected them with crop maps.",
+        "definition": ("Warnings, watches, advisories and special statements from Environment and Climate Change Canada. "
+                       "Alerts of the same type issued at the same time in one province count once."),
+        "how_calculated": "We count alerts that have not yet expired. The map on the overview page also checks Environment and Climate Change Canada's service directly each time you open it.",
+        "does_not_show": "Whether farms, livestock or transport are actually affected. Alert areas are forecast regions, not farmland.",
         "scenario": "drought", "chart": "alerts",
         "headline": {"state": "official_notice_active" if alerts else "none_active", "value": len(alerts), "warnings": len(warn),
                      "farm_relevant": len(farm), "by_province": dict(by_prov), "by_type": dict(by_type),
-                     "observation_end": ext["retrieved_at"], "period_label": f"In effect when checked, {long_date(ext['retrieved_at'])} {ext['retrieved_at'][11:16]} UTC",
+                     "observation_end": ext["retrieved_at"], "period_label": f"When checked on {long_date(ext['retrieved_at'])}",
                      "text": text},
     }
     return ind, {"id": "weather_alerts", "kind": "alerts"}

@@ -180,6 +180,15 @@ def parse_date(s: str) -> date | None:
         return None
 
 
+WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"]
+
+
+def words(n: int, cap: bool = False) -> str:
+    """Numbers up to ten as words (Canadian Press style), larger ones as figures."""
+    s = WORDS[n] if 0 <= n <= 10 else f"{n:,}"
+    return s[0].upper() + s[1:] if cap else s
+
+
 def days_between(a: date, b: date) -> int:
     return (b - a).days
 

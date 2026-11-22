@@ -20,14 +20,14 @@ def test_zero_base_is_not_calculable():
 def test_reference_state_needs_enough_years():
     st = reference_state(10, [9, 11], min_years=3)
     assert st["state"] == "insufficient_data"
-    assert "Not enough comparable history" in compare_words(st)
+    assert "do not have enough past years" in compare_words(st)
 
 
 def test_reference_state_flags_only_outside_full_range():
     assert reference_state(10, [8, 9, 12], 3)["state"] == "within_reference_range"
     st = reference_state(13, [8, 9, 12], 3)
     assert st["state"] == "outside_reference_range_review" and st["direction"] == "above"
-    assert "not by itself a sign of crisis" in compare_words(st)
+    assert "does not mean a crisis" in compare_words(st)
 
 
 def test_reference_ignores_missing_years():
@@ -75,11 +75,11 @@ TRADE = {"commodities": {"0705": {"label": "Lettuce", "group": "produce", "year"
 def test_disaster_without_trade_link_is_L0():
     links = link_events(_event("VUT"), TRADE, None)
     assert links[0]["level"] == "L0"
-    assert "No Canadian connection established" in links[0]["phrase"]
+    assert "No direct link found" in links[0]["phrase"]
 
 
 def test_trade_link_is_only_L1_never_impact():
     links = link_events(_event("USA"), TRADE, None)
     assert links[0]["level"] == "L1"
-    assert "specific impact unknown" in links[0]["phrase"]
+    assert "do not yet know whether this disaster affects" in links[0]["phrase"]
     assert links[0]["commodities"][0]["large_country"] is True

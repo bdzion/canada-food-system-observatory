@@ -13,23 +13,23 @@ from email.utils import format_datetime
 from pathlib import Path
 from xml.sax.saxutils import escape
 
-from .core import iso, read_json, write_json
+from .core import iso, read_json, words, write_json
 from .indicators import long_date
 
 SITE = "https://bdzion.github.io/canada-food-system-observatory/"
 SCENARIO_ORDER = ["rail", "phosphate", "drought", "avian-flu", "export", "cyber", "workforce"]
 SCENARIO_TITLE = {
-    "rail": "Rail or port shutdown", "phosphate": "Fertilizer supply cut", "drought": "Prairie drought",
-    "avian-flu": "Avian influenza", "export": "Export market closure", "cyber": "Cyberattack on food distribution",
-    "workforce": "Meat-plant workforce outbreak",
+    "rail": "The main rail line to Vancouver closes", "phosphate": "Fertilizer imports are cut before seeding", "drought": "A severe drought hits the Prairies",
+    "avian-flu": "Bird flu reaches a major poultry region", "export": "A major buyer closes its market", "cyber": "A cyberattack takes a grocery distributor offline",
+    "workforce": "Illness spreads through meat-plant workers",
 }
 PRAIRIES = {"AB", "SK", "MB"}
 STATE_WORDS = {
-    "within_reference_range": "within its usual range",
-    "outside_reference_range_review": "outside its usual range (review suggested)",
-    "insufficient_data": "not enough history to compare",
-    "official_notice_active": "official notices active",
-    "none_active": "no notices active",
+    "within_reference_range": "normal for the time of year",
+    "outside_reference_range_review": "unusual for the time of year",
+    "insufficient_data": "not enough past data to compare",
+    "official_notice_active": "alerts in effect",
+    "none_active": "no alerts in effect",
     "observed": "observed",
     "source_unavailable": "source unavailable",
 }
@@ -68,30 +68,31 @@ def situation(release_id: str, now: datetime, inds: list[dict], events: dict, li
     # ---- headline sentences, each tied to its evidence
     head = []
     if g["grain_stocks"]:
-        head.append({"theme": "Buffers", "text": g["grain_stocks"]["headline"]["text"], "evidence": ["grain_stocks"], "link": "/indicators/grain_stocks"})
+        head.append({"theme": "Grain in storage", "text": g["grain_stocks"]["headline"]["text"], "evidence": ["grain_stocks"], "link": "/indicators/grain_stocks"})
     if g["grain_exports"]:
-        head.append({"theme": "Logistics", "text": g["grain_exports"]["headline"]["text"], "evidence": ["grain_exports"], "link": "/indicators/grain_exports"})
+        head.append({"theme": "Grain shipped", "text": g["grain_exports"]["headline"]["text"], "evidence": ["grain_exports"], "link": "/indicators/grain_exports"})
     if g["produce_prices"]:
-        head.append({"theme": "Markets", "text": g["produce_prices"]["headline"]["text"], "evidence": ["produce_prices"], "link": "/indicators/produce_prices"})
+        head.append({"theme": "Fresh produce", "text": g["produce_prices"]["headline"]["text"], "evidence": ["produce_prices"], "link": "/indicators/produce_prices"})
     if g["food_affordability"]:
-        head.append({"theme": "Households", "text": g["food_affordability"]["headline"]["text"], "evidence": ["food_affordability"], "link": "/indicators/food_affordability"})
+        head.append({"theme": "Grocery bills", "text": g["food_affordability"]["headline"]["text"], "evidence": ["food_affordability"], "link": "/indicators/food_affordability"})
     if current_glob:
-        txt = (f"GDACS lists {len(current_glob)} orange or red hazard alert{'s' if len(current_glob) != 1 else ''} worldwide. "
-               + (f"{len(l1)} {'is' if len(l1) == 1 else 'are'} in countries Canada has recently imported tracked foods or farm inputs from; "
-                  "that is a supplier link, not evidence of an effect on Canada."
-                  if l1 else "None is in a country that supplies a large share of the tracked imports."))
-        head.append({"theme": "World", "text": txt, "evidence": [e["id"] for e in l1[:5]], "link": "/exposure"})
+        nd = len(current_glob)
+        txt = (f"The Global Disaster Alert and Coordination System, run by the United Nations and the European Commission, lists {words(nd)} serious disaster{'s' if nd != 1 else ''} around the world. "
+               + (f"{words(len(l1), True)} {'is' if len(l1) == 1 else 'are'} in countries Canada buys food or farm supplies from. "
+                  "That tells us where to look; it does not mean Canada is affected."
+                  if l1 else "None is in a country that supplies a large share of the foods and farm supplies we track."))
+        head.append({"theme": "Disasters abroad", "text": txt, "evidence": [e["id"] for e in l1[:5]], "link": "/threats/abroad"})
 
     # ---- four columns: what is happening -> where it could reach Canada -> what absorbs it -> who feels it
     happening = [c for c in (_card(g["weather_alerts"]), _card(g["food_recalls"])) if c]
     if current_glob:
-        happening.append({"id": "global_hazards", "title": "Global hazard alerts", "role": "signal",
-                          "state": "official_notice_active", "text": f"{len(current_glob)} orange or red GDACS alerts in the last few weeks.",
+        happening.append({"id": "global_hazards", "title": "Disasters abroad", "role": "signal",
+                          "state": "official_notice_active", "text": f"{words(len(current_glob), True)} serious disaster{'s' if len(current_glob) != 1 else ''} listed worldwide in recent weeks; {words(len(l1))} in countries that supply Canada.",
                           "period": "Last checked " + long_date(now.date().isoformat()), "scenario": None})
     if notices:
         n30 = [n for n in notices if n["date"] >= (now.date() - timedelta(days=30)).isoformat()]
         happening.append({"id": "gov_notices", "title": "Government announcements", "role": "signal", "state": "official_notice_active",
-                          "text": f"{len(n30)} food-related news release{'s' if len(n30) != 1 else ''} from AAFC, CFIA or Public Safety Canada in the last 30 days.",
+                          "text": f"{len(n30)} announcement{'s' if len(n30) != 1 else ''} about food or farming from Agriculture and Agri-Food Canada, the Canadian Food Inspection Agency or Public Safety Canada in the last 30 days.",
                           "period": "Last 30 days", "scenario": None})
     reach, seen_pairs = [], set()
     for e in l1:
@@ -103,9 +104,9 @@ def situation(release_id: str, now: datetime, inds: list[dict], events: dict, li
         top = e["canada_link"]["commodities"][0]
         more = len(e["canada_link"]["commodities"]) - 1
         reach.append({"id": e["id"], "title": e["title"], "level": "L1",
-                      "text": (f"{top['country']} supplied {top['share'] * 100:.0f}% of Canada's {top['label'].lower()} imports by value in {top['year']}"
-                               + (f", plus {more} other tracked product{'s' if more != 1 else ''}." if more else ".")
-                               + (" Large country: the hazard may be far from where it is grown." if top.get("large_country") else "")),
+                      "text": (f"{top['country']} supplied {top['share'] * 100:.0f}% of the {top['label'].lower()} Canada imported in {top['year']}"
+                               + (f", and {words(more)} other product{'s' if more != 1 else ''} we track." if more else ".")
+                               + (f" {top['country']} is a large country, so the disaster may be far from where these are grown." if top.get("large_country") else "")),
                       "scenario": top.get("scenario")})
     absorbs = [c for c in (_card(g["grain_stocks"]), _card(g["grain_exports"]), _card(g["produce_prices"])) if c]
     feels = [c for c in (_card(g["food_affordability"]),) if c]
@@ -114,59 +115,59 @@ def situation(release_id: str, now: datetime, inds: list[dict], events: dict, li
     qs = []
     gx, gs = g["grain_exports"], g["grain_stocks"]
     if gx and gx["headline"].get("direction") == "below":
-        qs.append({"text": "Grain exports are slower than in any recent year for this point in the crop year. Is the cause rail, ports, weather or weaker sales?", "scenario": "rail"})
+        qs.append({"text": "Grain is leaving the ports more slowly than in any recent year at this time. Is the cause rail, ports, weather or weaker sales?", "scenario": "rail"})
     if gs and gs["headline"].get("direction") == "above":
-        qs.append({"text": "Commercial grain stocks are higher than usual. Is that a comfortable buffer, or grain waiting for transport?", "scenario": "rail"})
+        qs.append({"text": "There is more grain in storage than in any recent year at this time. Is that a comfortable reserve, or grain waiting for trains and ships?", "scenario": "rail"})
     if gs and gs["headline"].get("direction") == "below":
-        qs.append({"text": "Commercial grain stocks are lower than usual. How much room is there if deliveries or imports are disrupted?", "scenario": "rail"})
+        qs.append({"text": "There is less grain in storage than in any recent year at this time. How much room is left if deliveries are disrupted?", "scenario": "rail"})
     pp = g["produce_prices"]
     if pp and pp["headline"].get("above"):
         hi = [i.get("short") or i["label"] for i in pp.get("items", []) if i.get("direction") == "above"]
         names = join_names(hi)
-        qs.append({"text": f"Wholesale prices for {names} are higher than in any recent year at this time of year. Is this weather in supplying regions, the exchange rate, or something else?", "scenario": None})
+        qs.append({"text": f"Wholesale prices for {names} are higher than in any recent year at this time. Is the cause weather where they are grown, the exchange rate, or something else?", "scenario": None})
     fa = g["food_affordability"]
     if fa and fa["headline"].get("direction") == "food_faster":
-        qs.append({"text": "Store food prices are rising faster than wages. Which households feel this first, and which buffers (income support, food banks) are under strain?", "scenario": None})
+        qs.append({"text": "Grocery prices are rising faster than wages. Which households feel this first, and are income supports and food banks keeping up?", "scenario": None})
     fert = [e for e in l1 if any(c["group"] == "inputs" for c in e["canada_link"]["commodities"])]
     if fert:
-        qs.append({"text": f"A hazard alert affects a country that supplies Canadian farm inputs ({fert[0]['canada_link']['commodities'][0]['label'].lower()}). Would a disruption land before spring seeding?", "scenario": "phosphate"})
+        qs.append({"text": f"A disaster has hit a country that supplies Canadian farms with {fert[0]['canada_link']['commodities'][0]['label'].lower()}. If supply is disrupted, would it be before spring seeding?", "scenario": "phosphate"})
     if not qs:
-        qs.append({"text": "No tracked measure is outside its usual range this week. Which buffer would you test first if that changed?", "scenario": None})
+        qs.append({"text": "None of the readings we track is unusual this week. Which weak point would you check first if that changed?", "scenario": None})
 
     # ---- one stress test to explore this week, with the reason
     wx = g["weather_alerts"]
     prairie_warn = bool(wx and set(wx["headline"].get("by_province", {})) & PRAIRIES)
     if gx and gx["headline"].get("state") == "outside_reference_range_review":
-        pick, why = "rail", "grain movement is outside its usual range this week"
+        pick, why = "rail", "grain shipments or storage are unusual for this time of year"
     elif fert:
-        pick, why = "phosphate", "a hazard alert affects a supplier of Canadian fertilizer or fuel"
+        pick, why = "phosphate", "a disaster has hit a country that supplies Canadian fertilizer or fuel"
     elif prairie_warn and now.month in (5, 6, 7, 8):
         pick, why = "drought", "weather alerts are in effect on the Prairies during the growing season"
     else:
         wk = now.isocalendar()[1]
-        pick, why = SCENARIO_ORDER[wk % len(SCENARIO_ORDER)], "it is this week's turn in the rotation; no live measure points to a particular test"
+        pick, why = SCENARIO_ORDER[wk % len(SCENARIO_ORDER)], "no reading this week points to one threat in particular, so we feature a different one each week"
 
     # ---- what changed since the previous release
     changes = []
     prev_ids = {e["id"] for e in (prev_events or {}).get("items", [])}
     if prev_ids:
         new_ev = [e for e in items if e["id"] not in prev_ids]
-        for kind, label in (("recall", "new CFIA recall notice"), ("weather_alert", "new weather alert"),
-                            ("gov_notice", "new government announcement"), ("global_hazard", "new global hazard alert")):
+        for kind, label in (("recall", "new food recall"), ("weather_alert", "new weather alert"),
+                            ("gov_notice", "new government announcement"), ("global_hazard", "new disaster abroad")):
             n = [e for e in new_ev if e["kind"] == kind]
             if n:
-                changes.append({"kind": "new_event", "text": f"{len(n)} {label}{'s' if len(n) != 1 else ''}", "ids": [e["id"] for e in n][:20], "link": "/events"})
+                changes.append({"kind": "new_event", "text": f"{len(n)} {label}{'s' if len(n) != 1 else ''}", "ids": [e["id"] for e in n][:20], "link": "/threats/warnings" if kind != "global_hazard" else "/threats/abroad"})
     prev_cards = {c["id"]: c for col in (prev or {}).get("columns", {}).values() for c in col if isinstance(c, dict)}
     for col in (happening, absorbs, feels):
         for c in col:
             p = prev_cards.get(c["id"])
             if p and p.get("observation_end") != c.get("observation_end") and c["id"] not in ("weather_alerts", "global_hazards", "gov_notices"):
-                changes.append({"kind": "new_observation", "text": f"New data: {c['title']} ({c['period']})", "ids": [c["id"]], "link": f"/indicators/{c['id']}"})
+                changes.append({"kind": "new_observation", "text": f"New data for {c['title'].lower()} ({c['period']})", "ids": [c["id"]], "link": f"/indicators/{c['id']}"})
             if p and p.get("state") != c.get("state") and c.get("state") and p.get("state"):
-                changes.append({"kind": "state_change", "text": f"{c['title']}: now {STATE_WORDS.get(c['state'], c['state'])} (was {STATE_WORDS.get(p['state'], p['state'])})", "ids": [c["id"]], "link": f"/indicators/{c['id']}"})
+                changes.append({"kind": "state_change", "text": f"{c['title']}: now {STATE_WORDS.get(c['state'], c['state'])} (before: {STATE_WORDS.get(p['state'], p['state'])})", "ids": [c["id"]], "link": f"/indicators/{c['id']}"})
     gaps = [{"source_id": s["id"], "health": s["health"],
-             "text": (f"{s['provider']}: last refresh failed; showing data to {long_date(s['observation_end'])}." if s["health"] == "error"
-                      else f"{s['provider']}: newest data ({long_date(s['observation_end'])}) are older than usual for this source." if s["health"] == "stale"
+             "text": (f"{s['provider']}: the latest update failed, so we show data up to {long_date(s['observation_end'])}." if s["health"] == "error"
+                      else f"{s['provider']}: the newest data ({long_date(s['observation_end'])}) are older than this source usually is." if s["health"] == "stale"
                       else f"{s['provider']}: no data available.")}
             for s in sources if s["health"] != "ok"]
     return {
@@ -219,11 +220,11 @@ def write_brief_if_due(out: Path, now: datetime, sit: dict, inds: list[dict], ev
         if ev and ev.get("date") and ev["date"] >= (start - timedelta(days=21)).isoformat():
             top = l["commodities"][0]
             glob.append({"title": ev["title"], "url": ev["url"], "level": "L1",
-                         "text": f"{top['country']}: {top['share'] * 100:.0f}% of Canada's {top['label'].lower()} imports ({top['year']}). Specific impact unknown."})
+                         "text": f"{top['country']} supplied {top['share'] * 100:.0f}% of the {top['label'].lower()} Canada imported in {top['year']}. We do not yet know whether this disaster affects that supply."})
     brief = {
         "schema_version": "1.0.0", "id": wid, "week_start": s, "week_end": e,
         "prepared_at": iso(now), "release_id": sit.get("release_id"),
-        "status": "Research briefing; not an official emergency alert. Prepared automatically by fixed rules from the data release named here; not reviewed by an analyst.",
+        "status": "A weekly summary prepared automatically from official data. It is a research product, not an official warning, and it has not been reviewed by an analyst.",
         "overview": [h["text"] for h in sit["headline"]],
         "changed": changed, "conditions": conditions, "global": glob[:8],
         "gaps": [g["text"] for g in sit["gaps"]],
@@ -244,27 +245,27 @@ def write_brief_if_due(out: Path, now: datetime, sit: dict, inds: list[dict], ev
 
 
 def brief_markdown(b: dict) -> str:
-    L = [f"# Canada Food System Situation Update — {b['id']}", "",
-         f"**Reporting week:** {long_date(b['week_start'])} to {long_date(b['week_end'])}  ",
-         f"**Prepared at:** {b['prepared_at']} (release {b['release_id']})  ",
-         f"**Status:** {b['status']}", "", "## National overview", ""]
-    L += [f"- {t}" for t in b["overview"]] + ["", "## What changed this week", ""]
+    L = [f"# Canada Food System Observatory: weekly brief, {long_date(b['week_start'])} to {long_date(b['week_end'])}", "",
+         f"**Week:** {b['id']}  ",
+         f"**Prepared:** {b['prepared_at']} (data update {b['release_id']})  ",
+         f"**Note:** {b['status']}", "", "## Summary", ""]
+    L += [f"- {t}" for t in b["overview"]] + ["", "## New this week", ""]
     if b["changed"]:
         for c in b["changed"]:
             L.append(f"**{c['theme']}: {c['count']}**")
             L += [f"- [{i['title']}]({i['url']}) ({i['date']})" for i in c["items"]]
             L.append("")
     else:
-        L += ["No new official notices were recorded for this week.", ""]
-    L += ["## Conditions (each with its own data period)", ""]
+        L += ["No new government notices were recorded this week.", ""]
+    L += ["## Latest readings (each with its own data date)", ""]
     L += [f"- **{c['title']}** — {c['text']} *Data: {c['period']}.*" for c in b["conditions"]]
-    L += ["", "## Global developments with a Canadian supplier link", ""]
+    L += ["", "## Disasters abroad in countries that supply Canada", ""]
     L += ([f"- [{g['title']}]({g['url']}) — {g['text']}" for g in b["global"]] or ["- None this week."])
-    L += ["", "## Evidence gaps", ""] + ([f"- {g}" for g in b["gaps"]] or ["- All sources refreshed normally."])
-    L += ["", "## Questions worth asking", ""] + [f"- {q}" for q in b["questions"]]
+    L += ["", "## Gaps in the data", ""] + ([f"- {g}" for g in b["gaps"]] or ["- All sources updated normally."])
+    L += ["", "## Questions to ask", ""] + [f"- {q}" for q in b["questions"]]
     st = b["stress_test"]
-    L += ["", "## Related stress test", "",
-          f"[{st['title']}]({SITE}#/lab/{st['id']}) — chosen because {st['reason']}. Illustrative model; not a forecast.",
+    L += ["", "## A what-if to try", "",
+          f"[{st['title']}]({SITE}#/threats/{st['id']}): we chose it because {st['reason']}. It is a simple illustration, not a forecast.",
           "", "## Sources", ""]
     L += [f"- {s['provider']}, {s['dataset']} (data to {s['observation_end'] or 'n/a'}): {s['url']}" for s in b["sources"]]
     return "\n".join(L) + "\n"
@@ -277,12 +278,12 @@ def write_feed(out: Path, now: datetime) -> None:
         pub = datetime.fromisoformat(b["prepared_at"].replace("Z", "+00:00")) if b.get("prepared_at") else now
         link = f"{SITE}#/briefs/{b['id']}"
         items.append(
-            f"<item><title>{escape('Situation update ' + b['id'])}</title><link>{escape(link)}</link>"
+            f"<item><title>{escape('Weekly brief ' + b['id'])}</title><link>{escape(link)}</link>"
             f"<guid isPermaLink=\"true\">{escape(link)}</guid><pubDate>{format_datetime(pub)}</pubDate>"
             f"<description>{escape(b.get('lead') or '')}</description></item>")
     xml = ('<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0"><channel>'
-           "<title>Canada Food System Observatory: weekly situation updates</title>"
-           f"<link>{SITE}</link><description>Research briefings built from official Canadian and global data. Not an official alert service.</description>"
+           "<title>Canada Food System Observatory: weekly brief</title>"
+           f"<link>{SITE}</link><description>A weekly summary of official Canadian and global data on the food system. A research product, not an official warning service.</description>"
            f"<language>en-ca</language><lastBuildDate>{format_datetime(now)}</lastBuildDate>"
            + "".join(items) + "</channel></rss>\n")
     (out / "feed.xml").write_text(xml, encoding="utf-8")

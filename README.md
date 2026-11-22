@@ -12,15 +12,17 @@ Developed at the Arrell Food Institute (AFI), University of Guelph, as the evide
 
 ## What the site does
 
-| Page | Question it answers |
+The site is written for readers who are new to the topic, such as policy staff. It opens with a plain overview and then walks through four steps:
+
+| Step | Question it answers |
 |---|---|
-| **Situation Room** | What is happening, where could it reach Canada, what absorbs it, and who feels it? A summary built by fixed rules, questions worth asking, the stress test of the week, a live weather-alert map, what changed since your last visit, and a look-back to any earlier day. |
-| **Indicators** | Grain in commercial storage, grain exported through ports, 12 fresh-produce wholesale prices, store food prices compared with wages, food recalls and weather alerts. Each compared with the same time of year in up to five earlier years, with its definition, method, limits, sources and a CSV download. |
-| **Events** | Official alerts and notices from ECCC, CFIA, the Government of Canada News Centre and GDACS. Each shows its evidence class and says that effects on the food system are not established. |
-| **Global links** | The Canada relevance filter: does a hazard abroad touch a country that supplies Canada? Evidence climbs a ladder from L0 (no link) to L4 (Canadian outcome); the pipeline assigns only L0 or L1. |
-| **Stress Test Lab** | The seven illustrative single-threat models, the compound-year calculator, the rail decision game and the threat register, migrated unchanged from the Stress Test, with "guess first" prompts and the live evidence beside each test. |
-| **Briefs** | A weekly situation brief, written every Monday, never rewritten afterwards, with an RSS feed. |
-| **Methods & sources** | Every source with its live status, the evidence classes, the screening rule, the limits and a corrections log. |
+| **Overview** | What is this site, and what do this week's figures say? Four key facts, a plain-language summary of the latest data, a live weather-alert map, new government notices, and a look-back to any earlier day. |
+| **1. The system** | How does food move through Canada, and where can it get stuck? A clickable map of the chain from farm supplies to grocery stores, showing the weak points, threats and live figures for each link. |
+| **2. The indicators** | How exposed is each link, and what do the latest figures show? Twelve published facts on where Canada has little backup, plus official data (grain in storage, grain shipped, fresh produce prices, grocery prices against wages, food recalls, weather warnings) compared with the same time of year in past years. |
+| **3. The threats** | What could go wrong, and is anything happening now? Eighteen threats with the research team's ratings, current warnings and notices, disasters abroad checked against Canada's suppliers, and seven what-if tests of acting early. |
+| **4. Possible timelines** | How could a bad year unfold, and when is there still time to act? Four month-by-month timelines, a calculator for what a bad year could cost, and a three-minute decision game. |
+| **Weekly brief** | A one-page summary written every Monday, never changed afterwards, with an RSS feed. |
+| **About the data** | Every source and whether it is working, how each figure is worked out, the labels used, the limits, and a corrections log. |
 
 ## Data sources
 
