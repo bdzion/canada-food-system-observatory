@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
+from . import screening
 from .core import config, median, pct_change, reference_state, rnd, words
 from .indicators import compare_words, long_date, month_label
 
@@ -46,7 +47,10 @@ def _num(v: float | None, unit: str) -> str:
 def _shift(t: str, freq: str, k: int) -> list[str]:
     """Dates that count as 'the same period, k years earlier'."""
     d = date.fromisoformat(t)
-    if freq in ("monthly", "quarterly", "annual"):
+    # Readings keyed to a calendar month compare with the same month. Grain
+    # stocks are surveyed three times a year on fixed dates, so they do too; a
+    # 52-week shift would never land on a stored reading.
+    if freq in ("monthly", "quarterly", "annual", "three_times_a_year"):
         return [d.replace(year=d.year - k).isoformat()]
     base = d - timedelta(days=364 * k)  # 52 weeks keeps the weekday
     return [(base + timedelta(days=o)).isoformat() for o in (0, -1, 1, -2, 2, -3, 3)]
@@ -91,6 +95,9 @@ def _period(t: str, freq: str) -> str:
         return f"the quarter starting {month_label(t)}" if d.month in (1, 4, 7, 10) else month_label(t)
     if freq == "annual":
         return t[:4]
+    if freq == "three_times_a_year":
+        # The reference date is the month; the reading is the stock at its end.
+        return f"the end of {month_label(t)}"
     return long_date(t)
 
 
@@ -156,6 +163,15 @@ def panel(ind: dict, lines: list[dict], *, freq: str, unit: str, main: str, cpi:
     items, chart_lines = [], []
     for ln in lines:
         it, ch = line_item(ln, freq, ln.get("unit", unit), cpi, lag, display_from)
+        # Both screens, per line, so a reader can see which of five cities or
+        # four sea lanes is doing something and which is not.
+        v, pace = screening.screen_series(ind["id"], ln["points"], freq, it)
+        it["screen"] = v
+        # A line marked `context` is there for comparison, not as part of what
+        # the indicator measures, so it must not decide the indicator's verdict.
+        it["context"] = bool(ln.get("context"))
+        if pace:
+            it["pace"] = pace
         items.append(it)
         chart_lines.append(ch)
     m = next(i for i in items if i["id"] == main)
@@ -163,6 +179,28 @@ def panel(ind: dict, lines: list[dict], *, freq: str, unit: str, main: str, cpi:
     head.update({k: m.get(k) for k in ("value", "median", "min", "max", "vs_median_pct", "n_years", "trend", "spark", "vs_year_ago_pct")})
     head.update({"unit": unit, "observation_end": m.get("t"), "period_label": (lambda p: p[:1].upper() + p[1:])(m.get("period") or ""),
                  "main": main, "text": text(m, items)})
+    # The indicator's rung covers every line in the panel, not only the main
+    # one, because the headline state has always done the same: a panel where
+    # one of five cities or fifteen foods is outside its range is not "clear".
+    subject = [i for i in items if not i.get("context")]
+    agg = screening.aggregate_verdict(ind["id"], [{"level": i, "pace": i.get("pace", {})} for i in subject])
+    agg["main_rung"] = m["screen"]["rung"]
+    head["screen"] = agg
+    # The headline sentence describes the main series. If the panel as a whole
+    # reached a higher rung than the main series did, say so rather than leaving
+    # the card's label and its sentence disagreeing.
+    if screening.RUNGS.index(agg["rung"]) > screening.RUNGS.index(m["screen"]["rung"]) \
+            if agg["rung"] in screening.RUNGS and m["screen"]["rung"] in screening.RUNGS else False:
+        c = agg["counts"]
+        extra = []
+        if c["converging"]:
+            extra.append(f"{words(c['converging'])} of the {words(c['n'])} set off both checks")
+        elif c["pace"]:
+            extra.append(f"{words(c['pace'])} of the {words(c['n'])} {'is' if c['pace'] == 1 else 'are'} moving unusually fast")
+        if c["level"] and not c["converging"]:
+            extra.append(f"{words(c['level'])} {'is' if c['level'] == 1 else 'are'} outside the range of past years")
+        if extra:
+            head["text"] = head["text"].rstrip() + " Taking every line in this panel together, " + " and ".join(extra) + "."
     ind = {**ind, "unit": unit, "frequency": freq, "chart": "lines", "headline": head, "items": items,
            "baseline_rule": ind.get("baseline_rule") or (
                f"Compared with the same {'week' if freq in ('weekly', 'daily') else ('quarter' if freq == 'quarterly' else 'month')} "
@@ -507,6 +545,7 @@ def provinces_indicator(ext: dict, statcan: dict | None) -> tuple[dict, dict]:
         "does_not_show": "Price levels (a smaller rise can still leave prices higher), or the territories, which Statistics Canada publishes for capital cities only.",
         "scenario": "", "chart": "bars",
         "headline": {"state": "observed", "observation_end": t, "period_label": month_label(t), "value": nat, "unit": "percent", "text": text,
+                     "screen": screening.verdict("provincial_prices", {}, {}),
                      "spread": rnd(hi["yoy"] - lo["yoy"], 1)},
         "baseline_rule": "Compared with the same month one year earlier.",
     }
@@ -569,6 +608,96 @@ def exchange_indicator(ext: dict) -> tuple[dict, dict]:
     }
     return panel(ind, lines, freq="monthly", unit="CAD", main="FXUSDCAD", display_from="2019-01-01", text=text,
                  chart_opts={"pick": True})
+
+
+# ------------------------------------------------------------------ buffers (release 3)
+
+def farm_grain_stocks_indicator(ext: dict) -> tuple[dict, dict]:
+    """Grain stocks including the share held on farms (StatCan 32-10-0013).
+
+    The Grain Commission figures cover licensed commercial elevators and port
+    terminals only, which is a small part of the total for most of the year.
+    This is the only reading the site has of the whole buffer.
+    """
+    s = ext["series"]
+    # on_farms and commercial add up to total, so they are shown as a breakdown
+    # rather than counted again in the verdict. Canola is its own buffer.
+    order = [("total", False), ("on_farms", True), ("commercial", True), ("canola", False)]
+    lines = [{"id": k, "label": s[k]["label"], "unit": "thousand tonnes", "points": _pts(s[k]["points"]), "context": ctx}
+             for k, ctx in order if k in s]
+
+    def text(m, items):
+        by = {i["id"]: i for i in items}
+        farm, comm = by.get("on_farms", {}), by.get("commercial", {})
+        out = (f"At the end of {month_label(m['t'])}, Canada held {_num(m['value'] * 1000, 'tonnes')} tonnes of wheat "
+               "in total, counting grain on farms as well as in elevators and at ports. ")
+        if farm.get("value") is not None and m.get("value"):
+            share = 100 * farm["value"] / m["value"]
+            out += f"About {share:.0f}% of it was still on farms. "
+        if comm.get("value") is not None:
+            out += f"Elevators and port terminals held {_num(comm['value'] * 1000, 'tonnes')} tonnes. "
+        return out + _cmp(m)
+
+    ind = {
+        "id": "farm_grain_stocks", "title": "All grain in the country, farms included", "role": "buffer",
+        "question": "How much grain does Canada actually hold, counting what is still on farms?",
+        "source_ids": ["CA-11"],
+        "definition": ("Wheat and canola held in Canada at the end of each stocks period, from Statistics Canada's survey of "
+                       "grain supply and disposition. Unlike the weekly Grain Commission figures, this counts grain still "
+                       "stored on farms, which is usually most of it."),
+        "how_calculated": ("We show the published totals and compare each one with the same stocks date in earlier years. "
+                           "Stocks are measured three times a year, at 31 December, 31 March and 31 July."),
+        "does_not_show": ("A developing disruption. Three readings a year, published about ten weeks later, can show how big "
+                          "the buffer is but not that it is being used up. Grain in transit is counted in neither place. "
+                          "Read it alongside the weekly Grain Commission figures, which are timelier but narrower."),
+        "scenario": "rail",
+    }
+    return panel(ind, lines, freq="three_times_a_year", unit="thousand tonnes", main="total", lag=1, text=text,
+                 chart_opts={"pick": True, "y_label": "thousand tonnes held"})
+
+
+def food_mfg_indicator(ext: dict) -> tuple[dict, dict]:
+    """Food manufacturing inventories (StatCan 16-10-0047).
+
+    The processing link had no buffer reading at all: only food recalls, which
+    is a safety signal. This is how much stock processors hold against what
+    they are shipping.
+    """
+    s = ext["series"]
+    # all_mfg is every industry together, shown only so a reader can see whether
+    # food is unusual or manufacturing as a whole is. It is context, so it does
+    # not count toward this indicator's verdict.
+    order = [("inv_to_sales", False), ("finished_to_sales", False), ("all_mfg", True)]
+    lines = [{"id": k, "label": s[k]["label"], "unit": "ratio", "points": _pts(s[k]["points"]), "context": ctx}
+             for k, ctx in order if k in s]
+
+    def text(m, items):
+        by = {i["id"]: i for i in items}
+        fin, allm = by.get("finished_to_sales", {}), by.get("all_mfg", {})
+        out = (f"In {month_label(m['t'])}, food processors held about ${m['value']:.2f} of stock for every dollar of food "
+               "they shipped that month. ")
+        if fin.get("value") is not None:
+            out += f"Of that, ${fin['value']:.2f} was finished food ready to ship. "
+        if allm.get("value") is not None:
+            out += f"Across all manufacturing the figure was ${allm['value']:.2f}. "
+        return out + _cmp(m)
+
+    ind = {
+        "id": "food_mfg_inventory", "title": "Stock held by food processors", "role": "buffer",
+        "question": "How much food stock do processors hold against what they are shipping?",
+        "source_ids": ["CA-12"],
+        "definition": ("The value of stock held by Canadian food manufacturers at the end of each month, divided by the value "
+                       "of what they shipped that month, from Statistics Canada's monthly survey of manufacturing. A higher "
+                       "figure means more stock sitting between farms and shops."),
+        "how_calculated": ("We use the figures that are not adjusted for the season, and compare each month with the same "
+                           "month in each of the past five years, because stock levels follow the calendar."),
+        "does_not_show": ("Days of supply. These are dollars, not tonnes, so the figure also moves when prices move. It covers "
+                          "the whole country and the whole industry, so it says nothing about one plant, one product or one "
+                          "region, and a disruption lasting a week may not show up in a month-end figure at all."),
+        "scenario": "cyber",
+    }
+    return panel(ind, lines, freq="monthly", unit="ratio", main="inv_to_sales", display_from="2019-01-01", text=text,
+                 chart_opts={"pick": True, "y_label": "stock held per dollar shipped"})
 
 
 # ------------------------------------------------------------------ drought

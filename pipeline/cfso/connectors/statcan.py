@@ -11,8 +11,8 @@ from ..core import SourceError, config, fetch_json, iso, parse_date, registry, u
 ID = "CA-04"
 
 
-def _pull(product: int, series: dict, n: int) -> dict:
-    url = registry()[ID]["endpoint"]
+def _pull(product: int, series: dict, n: int, source_id: str = ID) -> dict:
+    url = registry()[source_id]["endpoint"]
     body = [{"productId": product, "coordinate": s["coordinate"], "latestN": n} for s in series.values()]
     resp = fetch_json(url, method="POST", json_body=body)
     out = {}

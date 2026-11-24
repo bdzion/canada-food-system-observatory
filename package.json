@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "extract-legacy": "node scripts/extract-legacy.mjs",
-    "seed-data": "node scripts/seed-data.mjs"
+    "check-pages": "python3 scripts/check-pages.py"
   },
   "dependencies": {
     "leaflet": "^1.9.4",

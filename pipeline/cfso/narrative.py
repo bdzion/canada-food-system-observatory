@@ -67,8 +67,8 @@ def situation(release_id: str, now: datetime, inds: list[dict], events: dict, li
     stale = {x["id"] for x in sources if x["health"] in ("stale", "error")}
 
     def note(ind: dict) -> str:
-        if any(sid in stale for sid in ind.get("source_ids", [])):
-            return " These are the latest figures published; the source has not updated as expected since."
+        # The indicator's own headline text now carries the lateness sentence
+        # (build.mark_lateness), so adding one here would repeat it.
         return ""
     glob = [e for e in items if e["kind"] == "global_hazard"]
     current_glob = [e for e in glob if e.get("is_current")] or glob[:8]
@@ -78,7 +78,7 @@ def situation(release_id: str, now: datetime, inds: list[dict], events: dict, li
     # ---- headline sentences, each tied to its evidence
     head = []
     for d in ongoing:
-        head.append({"theme": "Ongoing: " + d["title"].split(" is ")[0].replace("The ", ""), "text": d["summary"][0] + " " + d["live"]["text"],
+        head.append({"theme": "Ongoing: " + d.get("theme", d["title"]), "text": d["summary"][0] + " " + d["live"]["text"],
                      "evidence": [d["id"], d["live"].get("indicator") or ""], "link": "/threats/ongoing"})
     if g["world_fertilizer"]:
         head.append({"theme": "Fertilizer", "text": g["world_fertilizer"]["headline"]["text"] + note(g["world_fertilizer"]), "evidence": ["world_fertilizer"], "link": "/indicators/world_fertilizer"})

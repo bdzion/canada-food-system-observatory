@@ -213,6 +213,42 @@ sources:
     browser_live: false
     status: validated_connector
 
+  # ---------------------------------------------------------- added in release 3
+  - id: CA-11
+    provider: Statistics Canada
+    dataset: Supply and disposition of grains in Canada (table 32-10-0013), including stocks held on farms
+    documentation_url: https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=3210001301
+    endpoint: https://www150.statcan.gc.ca/t1/wds/rest/getDataFromCubePidCoordAndLatestNPeriods
+    access_type: rest_json
+    licence: Statistics Canada Open Licence
+    licence_url: https://www.statcan.gc.ca/en/reference/licence
+    evidence_class: observation
+    # Stocks are surveyed three times a year, at 31 December, 31 March and
+    # 31 July, and published about ten weeks later. Verified 24 Nov 2026: the
+    # period ending 31 July 2026 was released on 9 October 2026.
+    expected_frequency: three_times_a_year
+    stale_after_days: 190
+    browser_live: false
+    status: validated_connector
+
+  - id: CA-12
+    provider: Statistics Canada
+    dataset: Manufacturers' sales, inventories and inventory-to-sales ratios, food manufacturing (table 16-10-0047)
+    documentation_url: https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1610004701
+    endpoint: https://www150.statcan.gc.ca/t1/wds/rest/getDataFromCubePidCoordAndLatestNPeriods
+    access_type: rest_json
+    licence: Statistics Canada Open Licence
+    licence_url: https://www.statcan.gc.ca/en/reference/licence
+    evidence_class: observation
+    # Monthly, published about six weeks after the month ends, and the
+    # observation date is the start of the reference month, so the newest
+    # reading is routinely 75 to 105 days old. Verified 24 Nov 2026: the month
+    # of September 2026 was released on 13 November 2026.
+    expected_frequency: monthly
+    stale_after_days: 110
+    browser_live: false
+    status: validated_connector
+
   - id: GL-06
     provider: US National Weather Service
     dataset: Active weather alerts in California, Arizona, Florida and Washington

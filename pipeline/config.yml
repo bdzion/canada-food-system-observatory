@@ -7,6 +7,90 @@ baseline:
   # Fewer comparable years than this and we report "not enough history".
   min_years: 3
 
+# ---------------------------------------------------------------- screening
+# Two screens run on every reading. See docs/redesign-plan.md P1 and the About
+# page for the reasoning; the short version is that the level screen cannot
+# discriminate on a trending series, because a reading outside the range of n
+# earlier years happens with probability 2/(n+1) when nothing has changed -
+# one year in three at n = 5, one in two at n = 3.
+screening:
+  # The level screen: is the reading outside the full range of the same period
+  # in earlier years? Unchanged from release 1, and still published for every
+  # indicator. These are its own false-positive rates, published beside it.
+  level_luck_rate:
+    3: "about one year in two"
+    4: "about two years in five"
+    5: "about one year in three"
+
+  # The level screen reports the rank whenever there are at least
+  # baseline.min_years to compare, but it only counts as *firing* with this many
+  # comparison years. At three years it would be wrong half the time.
+  level_min_years_to_flag: 5
+
+  # The pace screen: standardised growth rather than level, following FAO's
+  # Indicator of Food Price Anomalies, the method behind UN SDG indicator
+  # 2.c.1. Growth over the latest quarter and the latest year is standardised
+  # against the same calendar period in earlier years and combined with the
+  # published weight gamma. Thresholds are in standard deviations, and they are
+  # the published ones.
+  #
+  # Only the "high" band counts as firing. The "elevated" band is reported, not
+  # flagged, because a reading beyond half a standard deviation either way
+  # happens in about three periods in five when nothing has changed; beyond a
+  # full standard deviation, about one in three. GIEWS makes the same split,
+  # showing "moderately high" differently from a "high" alert.
+  pace:
+    gamma: 0.4           # weight on the quarterly component; 1 - gamma on the annual
+    elevated: 0.5        # reported as "a little faster than usual"; does not fire
+    high: 1.0            # fires
+    min_years: 3         # fewer comparable years than this and the screen reports nothing
+  # A move counts as a change of state only if it clears a threshold that is
+  # larger where the base is smaller, so small-number series stop firing on
+  # noise. Adapted from WFP HungerMap's deterioration rule. Bands are read as
+  # "base value at or above this -> this relative change needed".
+  deterioration_bands:
+    - {at_or_above: 40, relative_pct: 15}
+    - {at_or_above: 20, relative_pct: 20}
+    - {at_or_above: 0, relative_pct: 25}
+
+  # Which screens are meaningful for each indicator, and why. The verdict is a
+  # ladder, not a yes or no:
+  #
+  #   clear       neither screen fires
+  #   level       the highest or lowest of the comparable readings, but moving
+  #               at its usual pace - which is the normal state of a series that
+  #               trends, and on its own says little
+  #   pace        moving unusually fast, but still inside the range of past years
+  #   converging  both: outside the range of past years AND moving unusually
+  #               fast. This is the one worth a closer look.
+  #
+  # Where only one screen is meaningful, that screen firing is the top of the
+  # ladder for that indicator and the site says so rather than implying a
+  # convergence it cannot test. Measured rates over the stored history are in
+  # docs/audit.md A1.
+  frames:
+    farm_inputs:        {screens: [level, pace], why: "The index rises steadily, so every quarter is a new five-year high: the level screen flagged 100% of testable quarters. Only the pace adds anything."}
+    store_prices:       {screens: [level, pace], why: "Shelf prices trend upward; the level screen flagged 96% of months."}
+    diesel:             {screens: [level, pace], why: "Trends with crude oil and inflation, so the rate of change carries the information."}
+    world_fertilizer:   {screens: [level, pace], why: "A world price index with a strong trend; it is also still below its 2022 peak, so the level alone can read as calm while prices climb."}
+    world_prices:       {screens: [level, pace], why: "A world price index with a strong trend, below its 2022 peak."}
+    produce_prices:     {screens: [level, pace], why: "Wholesale prices trend with inflation even after conversion to today's dollars. Both checks run on each of the twelve products separately, and the card reports how many of them each check flags."}
+    exchange_rate:      {screens: [level, pace], why: "The rate drifts over years, so a sharp move matters more than the level."}
+    food_affordability: {screens: [],            why: "Already published as the gap between two rates of change, which can be negative. Neither check is meaningful on such a gap, so it is shown as published. A level check on the gap itself would be worth adding; see the remaining research needs."}
+    grain_stocks:       {screens: [level, pace], why: "Both matter: how full the elevators are, and how fast they are filling or emptying."}
+    grain_exports:      {screens: [level, pace], why: "Both matter: the four-week pace against past years, and whether it is falling unusually fast."}
+    rail_freight:       {screens: [level, pace], why: "Both matter: tonnes moved against past years, and a sharp fall."}
+    farm_grain_stocks:  {screens: [level],       why: "Three readings a year. Growth over so few periods is noisy, so only the level is reported."}
+    food_mfg_inventory: {screens: [level, pace], why: "A ratio that moves within a band, but a fast drawdown is the signal that matters."}
+    prairie_drought:    {screens: [level],       why: "A bounded share. Year-on-year change swings wildly because drought comes and goes. The monitor's archive also starts in 2023, so there are at most three years to compare and the level screen cannot fire."}
+    us_drought:         {screens: [level],       why: "A bounded share, for the same reason: the pace screen flagged 83% of weeks against the level screen's 0%."}
+    sea_lanes:          {screens: [level],       why: "A count against a stable seasonal pattern; a closure shows as a level outside every past year."}
+    ports:              {screens: [level],       why: "A count against a stable seasonal pattern."}
+    work_stoppages:     {screens: [level],       why: "A small count. Year-on-year change on small counts is mostly noise."}
+    food_recalls:       {screens: [level],       why: "A count of notices; the level against the same window in past years is the question."}
+    provincial_prices:  {screens: [],            why: "Published as a year-on-year change and shown side by side across provinces, so neither screen applies."}
+    food_insecurity:    {screens: [],            why: "Published once a year, with too few readings for either screen. Shown as published."}
+    weather_alerts:     {screens: [],            why: "A live count of alerts in effect, not a series with a history to compare."}
 infohort:
   # Exact quote series. A series is one market x commodity x variety x grade x
   # origin country x origin province x package. We never pool across these
@@ -303,6 +387,33 @@ cdm:
     AB: {label: "Alberta (south of 54°N)", bbox: [-120.0, 49.0, -110.0, 54.0]}
     SK: {label: "Saskatchewan (south of 54°N)", bbox: [-110.0, 49.0, -101.4, 54.0]}
     MB: {label: "Manitoba (south of 54°N)", bbox: [-101.4, 49.0, -95.2, 54.0]}
+
+# ---------------------------------------------------------------- added in release 3
+# Grain supply and disposition (table 32-10-0013). Stocks are surveyed at
+# 31 December, 31 March and 31 July. Coordinate order is
+# (geography, type of crop, supply and disposition). Verified 24 Nov 2026.
+grain_stocks:
+  product: 32100013
+  periods: 18          # six years of three readings
+  series:
+    total:      {coordinate: "1.1.18.0.0.0.0.0.0.0", label: "All wheat, total stocks", unit: "thousand tonnes"}
+    on_farms:   {coordinate: "1.1.19.0.0.0.0.0.0.0", label: "All wheat, stocks on farms", unit: "thousand tonnes"}
+    commercial: {coordinate: "1.1.20.0.0.0.0.0.0.0", label: "All wheat, stocks in commercial positions", unit: "thousand tonnes"}
+    canola:     {coordinate: "1.8.18.0.0.0.0.0.0.0", label: "Canola, total stocks", unit: "thousand tonnes"}
+
+# Food manufacturing inventories (table 16-10-0047), unadjusted, Canada.
+# Coordinate order is (geography, principal statistic, seasonal adjustment,
+# industry). Principal statistic 8 is the ratio of total inventory to sales,
+# 9 the ratio of finished goods to sales, 7 total inventory in dollars.
+# Industry 3 is food manufacturing, 1 all manufacturing. Verified 24 Nov 2026.
+food_manufacturing:
+  product: 16100047
+  months: 84
+  series:
+    inv_to_sales:      {coordinate: "1.8.1.3.0.0.0.0.0.0", label: "Food manufacturing: stock held per dollar shipped", unit: "ratio"}
+    finished_to_sales: {coordinate: "1.9.1.3.0.0.0.0.0.0", label: "Food manufacturing: finished goods per dollar shipped", unit: "ratio"}
+    inventory:         {coordinate: "1.7.1.3.0.0.0.0.0.0", label: "Food manufacturing: total stock held", unit: "dollars"}
+    all_mfg:           {coordinate: "1.8.1.1.0.0.0.0.0.0", label: "All manufacturing: stock held per dollar shipped", unit: "ratio"}
 
 us_growing:
   # US states that supply most of Canada's imported fresh fruit and vegetables.

@@ -1,0 +1,27 @@
+{
+ "features": [
+  {
+   "attributes": {
+    "date": "2026-11-01",
+    "portid": "chokepoint6",
+    "n_total": 1,
+    "n_tanker": 1,
+    "n_dry_bulk": 0,
+    "n_container": 0,
+    "capacity": 120000
+   }
+  },
+  {
+   "attributes": {
+    "date": "2026-11-02",
+    "portid": "chokepoint6",
+    "n_total": 2,
+    "n_tanker": 1,
+    "n_dry_bulk": 1,
+    "n_container": 0,
+    "capacity": 240000
+   }
+  }
+ ],
+ "exceededTransferLimit": false
+}

@@ -10,12 +10,26 @@
 disruptions:
   - id: hormuz
     title: The Strait of Hormuz is largely closed to shipping
+    # Short label for the overview summary. Set it here rather than cutting the
+    # title apart in code.
+    theme: Strait of Hormuz
     since: "2026-02-28"
     status: ongoing
     last_reviewed: "2026-11-21"
     review_every_days: 30
     scenario: phosphate
-    live_check: {indicator: sea_lanes, item: chokepoint6, label: Ships through the Strait of Hormuz}
+    # shows_when: the direction of the live reading that means the disruption is
+    # still visible. "below" for a blockade that cuts traffic; "above" for a
+    # shortage that raises a price.
+    live_check:
+      indicator: sea_lanes
+      item: chokepoint6
+      label: Ships through the Strait of Hormuz
+      unit: ships a day
+      shows_when: below
+      source_note: >-
+        Estimated from ships' tracking signals by the International Monetary Fund's PortWatch.
+        The shaded band is the range for the same weeks in the past five years.
     watch: [sea_lanes, world_fertilizer, farm_inputs, diesel, world_prices, exchange_rate]
     summary:
       - >-

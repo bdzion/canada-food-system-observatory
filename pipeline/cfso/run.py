@@ -21,6 +21,14 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--offline", action="store_true", help="do not contact any source")
     a = ap.parse_args(argv)
     only = set() if a.offline else (set(a.only.split(",")) if a.only else None)
+    if only:
+        # A typo in --only would otherwise refresh nothing and still exit 0 with
+        # a normal-looking manifest, which reads as a successful run.
+        from .connectors import CONNECTORS
+        unknown = sorted(only - set(CONNECTORS))
+        if unknown:
+            ap.error(f"unknown source id(s) in --only: {', '.join(unknown)}. "
+                     f"Known ids: {', '.join(sorted(CONNECTORS))}")
     man = run(a.data, only)
     print(json.dumps({k: man[k] for k in ("release_id", "generated_at", "sources_ok", "sources_total")}))
     # A release with no working source at all is a failure worth surfacing in CI.
