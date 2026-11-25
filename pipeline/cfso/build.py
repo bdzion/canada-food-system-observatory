@@ -21,7 +21,7 @@ from .core import SourceError, config, iso, read_json, registry, sanitize, utc_n
 from .exposure import link_events
 from .indicators import (affordability_indicator, grain_indicator, long_date, produce_indicator,
                          recalls_indicator, weather_indicator)
-from . import narrative, ongoing
+from . import narrative, ongoing, transmission
 from . import panels
 
 
@@ -394,9 +394,12 @@ def run(data_dir: Path, only: set[str] | None = None) -> dict:
                             for k, v in (extracts.get("CA-03") or {}).get("series", {}).items()],
     }
     ongoing_items = ongoing.build(inds, now)
+    # The cascade carries memory, so it reads the previous release.
+    trans = transmission.build(inds, now, read_json(data_dir / "transmission.json"))
     prev_sit = read_json(data_dir / "situation.json")
     prev_events = read_json(data_dir / "events.json", {}) or {}
-    sit = narrative.situation(release_id, now, inds, events, links, sources, prev_sit, prev_events, ongoing_items)
+    sit = narrative.situation(release_id, now, inds, events, links, sources, prev_sit, prev_events,
+                              ongoing_items, trans)
 
     common = {"schema_version": SCHEMA_VERSION, "release_id": release_id, "generated_at": iso(now)}
     write_json(new / "indicators.json", {**common, "indicators": inds})
@@ -405,6 +408,7 @@ def run(data_dir: Path, only: set[str] | None = None) -> dict:
     write_json(new / "exposure.json", exposure)
     write_json(new / "situation.json", {**common, **sit})
     write_json(new / "ongoing.json", {**common, "items": ongoing_items})
+    write_json(new / "transmission.json", {**common, **trans})
     cdm = extracts.get("CA-09")
     if cdm and cdm.get("latest_geo"):
         write_json(new / "drought.geojson", _round_geo(cdm["latest_geo"]))

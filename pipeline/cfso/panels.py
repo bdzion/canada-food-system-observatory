@@ -182,6 +182,10 @@ def panel(ind: dict, lines: list[dict], *, freq: str, unit: str, main: str, cpi:
     # The indicator's rung covers every line in the panel, not only the main
     # one, because the headline state has always done the same: a panel where
     # one of five cities or fifteen foods is outside its range is not "clear".
+    # The main series' pace travels with the headline: without it, anything
+    # reading the headline alone cannot tell which way the reading is moving.
+    if m.get("pace"):
+        head["pace"] = m["pace"]
     subject = [i for i in items if not i.get("context")]
     agg = screening.aggregate_verdict(ind["id"], [{"level": i, "pace": i.get("pace", {})} for i in subject])
     agg["main_rung"] = m["screen"]["rung"]

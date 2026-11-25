@@ -13,6 +13,7 @@ from email.utils import format_datetime
 from pathlib import Path
 from xml.sax.saxutils import escape
 
+from . import transmission
 from .core import iso, read_json, words, write_json
 from .indicators import long_date
 
@@ -57,7 +58,8 @@ def _card(ind: dict | None) -> dict | None:
 
 
 def situation(release_id: str, now: datetime, inds: list[dict], events: dict, links: list[dict],
-              sources: list[dict], prev: dict | None, prev_events: dict, ongoing: list[dict] | None = None) -> dict:
+              sources: list[dict], prev: dict | None, prev_events: dict, ongoing: list[dict] | None = None,
+              trans: dict | None = None) -> dict:
     items = events["items"]
     g = {k: _ind(inds, k) for k in ("grain_stocks", "grain_exports", "produce_prices", "food_affordability", "food_recalls", "weather_alerts",
                                     "sea_lanes", "ports", "world_fertilizer", "world_prices", "diesel", "farm_inputs", "store_prices",
@@ -90,6 +92,16 @@ def situation(release_id: str, now: datetime, inds: list[dict], events: dict, li
         head.append({"theme": "Fresh produce", "text": g["produce_prices"]["headline"]["text"] + note(g["produce_prices"]), "evidence": ["produce_prices"], "link": "/indicators/produce_prices"})
     if g["food_affordability"]:
         head.append({"theme": "Grocery bills", "text": g["food_affordability"]["headline"]["text"] + note(g["food_affordability"]), "evidence": ["food_affordability"], "link": "/indicators/food_affordability"})
+    tr = (trans or {}).get("chains") or []
+    moved = [c for c in tr if c.get("stage_reached")]
+    if moved:
+        c = moved[0]
+        head.append({"theme": "How far it has travelled",
+                     "text": (f"Of the {len(tr)} chains of knock-on effects we follow, {len(moved)} show readings that "
+                              f"have moved along them. The furthest is “{c['title'].lower()}”, where the evidence has "
+                              f"reached {c['stage_reached_label'].lower()}."),
+                     "evidence": [w["indicator"] for s in c["stages"] for w in s["watch"] if w["firing"]][:5],
+                     "link": f"/threats/{c['id']}"})
     if current_glob:
         nd = len(current_glob)
         txt = (f"The Global Disaster Alert and Coordination System, run by the United Nations and the European Commission, lists {words(nd)} serious disaster{'s' if nd != 1 else ''} around the world. "
@@ -163,14 +175,19 @@ def situation(release_id: str, now: datetime, inds: list[dict], events: dict, li
         qs.append({"text": "None of the readings we track is unusual this week. Which weak point would you check first if that changed?", "scenario": None})
 
     # ---- one stress test to explore this week, with the reason
+    # The cascade decides this now: the chain whose readings have travelled
+    # furthest is the one worth looking at, and its reason is the evidence.
     wx = g["weather_alerts"]
     prairie_warn = bool(wx and set(wx["headline"].get("by_province", {})) & PRAIRIES)
-    if gx and gx["headline"].get("state") == "outside_reference_range_review":
-        pick, why = "rail", "grain shipments or storage are unusual for this time of year"
+    furthest = ((trans or {}).get("chains") or [None])[0]
+    if furthest and furthest.get("stage_reached"):
+        pick = furthest["id"]
+        why = (f"the readings along it have reached “{furthest['stage_reached_label'].lower()}”, "
+               "further than any other chain we follow")
     elif fert:
         pick, why = "phosphate", "a disaster has hit a country that supplies Canadian fertilizer or fuel"
-    elif (wf and wf["headline"].get("direction") == "above") or any(d["live"]["state"] == "still_showing" for d in ongoing):
-        pick, why = "phosphate", "world fertilizer prices are unusually high and a sea lane that carries fertilizer is largely closed"
+    elif any(d["live"]["state"] == "still_showing" for d in ongoing):
+        pick, why = "phosphate", "a sea lane that carries much of the world's fertilizer is still largely closed"
     elif prairie_warn and now.month in (5, 6, 7, 8):
         pick, why = "drought", "weather alerts are in effect on the Prairies during the growing season"
     else:
@@ -212,7 +229,8 @@ def situation(release_id: str, now: datetime, inds: list[dict], events: dict, li
                    "unusual": sum(1 for i in inds if i.get("headline", {}).get("state") == "outside_reference_range_review"),
                    "indicators": len(inds)},
         "ongoing": [{"id": d["id"], "title": d["title"], "since": d["since"], "days": d["days"], "live": d["live"],
-                     "review_overdue": d["review_overdue"]} for d in ongoing],
+                     "review_overdue": d["review_overdue"], "expired": d.get("expired")} for d in ongoing],
+        "transmission": (transmission.summary(trans) if trans else None),
     }
 
 
