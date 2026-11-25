@@ -4,14 +4,24 @@
  * would render a blank or a wrong label.
  *
  * They run against whatever release is checked out in public/data, and skip
- * themselves when there is none, so a clean clone still passes `npm test`. */
+ * themselves when there is none, so a clean clone still passes `npm test`.
+ *
+ * describe.skipIf is not enough on its own for that. Vitest still runs a
+ * skipped describe's body at collection time and only marks the resulting
+ * suite skipped, so a read at the top of a describe throws before any test is
+ * skipped. public/data is gitignored, so on a clean checkout that failed the
+ * whole file. The guard therefore lives in read() itself. */
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { SCHEMA } from "../src/lib/types";
 
 const DATA = "public/data";
 const has = existsSync(`${DATA}/indicators.json`);
-const read = (f: string) => JSON.parse(readFileSync(`${DATA}/${f}`, "utf8"));
+/* With no release present, every field of a read comes back as an empty array,
+   so the collect-time constants below cannot throw whatever they reach for.
+   The suites are then skipped rather than failed. */
+const EMPTY: any = new Proxy({}, { get: () => [] });
+const read = (f: string): any => (has ? JSON.parse(readFileSync(`${DATA}/${f}`, "utf8")) : EMPTY);
 
 const RUNGS = ["clear", "level", "pace", "converging", "insufficient", "not_screened"];
 const STAGE_STATES = ["unwatched", "insufficient", "clear", "easing", "reached"];
@@ -23,7 +33,7 @@ describe.skipIf(!has)("a published release", () => {
   });
 
   describe("every indicator", () => {
-    const inds = read("indicators.json").indicators as any[];
+    const inds = (read("indicators.json").indicators ?? []) as any[];
 
     it("has the fields a card and a page render", () => {
       expect(inds.length).toBeGreaterThan(0);
@@ -100,7 +110,7 @@ describe.skipIf(!has)("a published release", () => {
 
   describe("every chain", () => {
     const t = read("transmission.json");
-    const inds = new Map((read("indicators.json").indicators as any[]).map((i) => [i.id, i]));
+    const inds = new Map(((read("indicators.json").indicators ?? []) as any[]).map((i) => [i.id, i]));
     const order = (t.stages as any[]).map((s) => s.id);
 
     it("names stages the page knows, in the shared order", () => {
@@ -200,19 +210,19 @@ describe.skipIf(!has)("a published release", () => {
                            "event_driven", "annual", "three_times_a_year", "quarterly", "biweekly"]);
 
     it("gives every source a frequency the site can say in words", () => {
-      for (const src of read("sources.json"))
+      for (const src of read("sources.json") ?? [])
         expect(KNOWN.has(src.expected_frequency), `${src.id} frequency ${src.expected_frequency}`).toBe(true);
     });
 
     it("never leaves a published frequency empty", () => {
-      for (const src of read("sources.json"))
+      for (const src of read("sources.json") ?? [])
         expect(src.expected_frequency, `${src.id}`).toBeTruthy();
     });
   });
 
   describe("an ongoing disruption", () => {
     it("is labelled, dated and carries its own live check", () => {
-      for (const o of read("ongoing.json").items) {
+      for (const o of read("ongoing.json").items ?? []) {
         expect(o.evidence_class).toBe("author_judgement");
         expect(o.last_reviewed).toBeTruthy();
         expect(o.note).toContain("Written by the observatory team");
