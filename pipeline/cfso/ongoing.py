@@ -57,7 +57,7 @@ def build(inds: list[dict], now: datetime) -> list[dict]:
             if still:
                 txt = f"Still showing in the data: {reading} {period}"
                 if item.get("median") is not None:
-                    txt += f", against a typical {_fmt(item['median'], unit)} for this time of year."
+                    txt += f", compared with {_fmt(item['median'], unit)} usually at this time of year."
                 else:
                     txt += "."
             else:

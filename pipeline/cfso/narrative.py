@@ -96,9 +96,9 @@ def situation(release_id: str, now: datetime, inds: list[dict], events: dict, li
     moved = [c for c in tr if c.get("stage_reached")]
     if moved:
         c = moved[0]
-        head.append({"theme": "How far it has travelled",
-                     "text": (f"Of the {len(tr)} chains of knock-on effects we follow, {len(moved)} show readings that "
-                              f"have moved along them. The furthest is “{c['title'][:1].lower() + c['title'][1:]}”, where the "
+        head.append({"theme": "Knock-on effects",
+                     "text": (f"Of the {len(tr)} chains of knock-on effects we follow, {len(moved)} show signs of a shock "
+                              f"moving along them. The furthest is “{c['title'][:1].lower() + c['title'][1:]}”, where the "
                               # The stage name is a phrase, not a noun ("stored supply is used up"),
                               # so without quotation marks the sentence reads as a run-on.
                               f"evidence has reached the link we call “{c['stage_reached_label'].lower()}”."),
