@@ -47,7 +47,7 @@ export function IndicatorList() {
       <p style={{ maxWidth: "75ch" }}>We use two kinds of indicator. The first shows <b>how exposed</b> each link in the chain is: facts that change slowly, such as how much of a product Canada imports. The second shows <b>what is happening now</b>: official figures that we collect automatically and compare with the same time of year in the past.</p>
 
       <section aria-labelledby="h-weak">
-        <h2 id="h-weak">A. How exposed is Canada? Twelve weak points</h2>
+        <h2 id="h-weak">A. How exposed is Canada? {(INDIC as any[]).length} weak points</h2>
         <p className="small muted">Each figure comes from the published source named on the card, checked {CHECKED}. The rating (high, raised) and how fixable each weak point is are the research team's judgement.</p>
         <p className="noprint"><button className="btn ghost small" aria-pressed={asTable} onClick={() => setAsTable(!asTable)}>{asTable ? "Show as cards" : "Show as one table"}</button></p>
         {asTable ? (
@@ -67,7 +67,7 @@ export function IndicatorList() {
               <div className="grid3">
                 {items.map((i: any) => (
                   <div key={i.id} className="card">
-                    <div className="meta"><Evidence cls="source_fact" /><span className={`lvl ${i.level}`} style={{ color: "#fff", borderRadius: 4, padding: "0 6px", fontWeight: 700 }}>{i.level === "High" ? "High exposure" : "Raised exposure"}</span></div>
+                    <div className="meta"><Evidence cls="source_fact" /><span className={`lvl ${i.level}`} style={{ color: "var(--on-fill)", borderRadius: 4, padding: "0 6px", fontWeight: 700 }}>{i.level === "High" ? "High exposure" : "Raised exposure"}</span></div>
                     <div className="fact" style={{ border: 0, boxShadow: "none", padding: "6px 0", background: "transparent" }}><span className="n">{i.num}</span><span className="t">{i.title}</span></div>
                     <p>{i.text}</p>
                     <p className="small" style={{ marginTop: 6 }}><span className="fixtag">{i.fix}</span> {i.fixwhy}</p>
@@ -101,7 +101,7 @@ export function IndicatorList() {
           <br /><br />
           The two answer different questions, and the level check on its own is weak: with five years to compare,
           the highest or lowest reading happens about one year in three by chance alone, and on a figure that
-          climbs year after year it happens almost every time. So a figure is only called out when <b>both</b>
+          climbs year after year it happens almost every time. So a figure is only called out when <b>both</b>{" "}
           checks agree, or when only one of them can be run for that figure and it fires. Each card says which.
           Even then it is a reason to look closer, not proof of a problem.
         </div>

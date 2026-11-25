@@ -4,6 +4,7 @@
 For each page, at a wide (1280 px) and a narrow (390 px) viewport, this script
 records:
   - console errors and page exceptions;
+  - the same again in the dark colour scheme;
   - horizontal overflow (the page being wider than the window);
   - failed network requests;
   - accessibility violations found by axe-core (WCAG 2.1 A and AA rules);
@@ -57,6 +58,9 @@ PAGES: list[tuple[str, str]] = [
 ]
 
 VIEWPORTS = [(1280, 900, "wide"), (390, 844, "narrow")]
+# The stylesheet ships a full dark palette. Checking only the light scheme left
+# every dark-mode contrast figure untested, which is how two of them were wrong.
+SCHEMES = ["light", "dark"]
 
 # Rules that fire on third-party map tiles or on decorative SVG we label in text.
 AXE_IGNORE: set[str] = set()
@@ -93,9 +97,10 @@ async def check(base: str, shots: Path, only: str | None) -> int:
     async with async_playwright() as p:
         browser = await p.chromium.launch(channel="chrome", args=["--no-sandbox"])
         for route, name in pages:
-            for w, h, label in VIEWPORTS:
+            for (w, h, label), scheme in [(v, s) for v in VIEWPORTS for s in SCHEMES]:
                 ctx = await browser.new_context(viewport={"width": w, "height": h},
-                                                device_scale_factor=1, reduced_motion="reduce")
+                                                device_scale_factor=1, reduced_motion="reduce",
+                                                color_scheme=scheme)
                 page = await ctx.new_page()
                 errors: list[str] = []
                 page.on("console", lambda m: errors.append(f"console.{m.type}: {m.text}") if m.type == "error" else None)
@@ -149,18 +154,19 @@ async def check(base: str, shots: Path, only: str | None) -> int:
                 bad = bool(errors) or bool(serious)
                 failures += bool(bad)
                 flag = "FAIL" if bad else ("warn" if axe_bad else "ok  ")
-                print(f"{flag} {label:6} {route or '(overview)'}")
+                print(f"{flag} {label:6} {scheme:5} {route or '(overview)'}")
                 for e in errors:
                     print(f"       ! {e}")
                 for v in axe_bad:
                     print(f"       {'!' if v['impact'] in ('serious', 'critical') else '-'} axe {v['id']} "
                           f"({v['impact']}, {v['n']}): {v['help']} :: {'; '.join(v['targets'])}")
 
-                if label == "wide":
+                if label == "wide" and scheme == "light":
                     await page.screenshot(path=str(shots / f"{name}.png"), full_page=True)
                 await ctx.close()
         await browser.close()
-    print(f"\n{len(pages)} pages x {len(VIEWPORTS)} viewports; {failures} failing checks")
+    print(f"\n{len(pages)} pages x {len(VIEWPORTS)} viewports x {len(SCHEMES)} colour schemes; "
+          f"{failures} failing checks")
     return 1 if failures else 0
 
 
