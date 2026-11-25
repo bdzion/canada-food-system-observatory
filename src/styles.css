@@ -10,10 +10,12 @@
   --base: #c2552b;      /* do nothing / food prices */
   --late: #1a9e6e;      /* wait and react */
   --act: #2a6fb8;       /* early action / current observation */
+  --act-ink: #1f5c9e;  /* --act darkened for text on tinted panels; see .btn.ghost */
   --band: rgba(42, 111, 184, 0.12);
   --band-warm: rgba(212, 134, 10, 0.12);
   --watch: #8a6a00;
   --ready: #b45f06;
+  --ready-ink: #8a4704;  /* --ready darkened for text; see .warn and .tag.firing */
   --alert: #b3261e;
   --good: #2d6a4f;
   --obs: #2a6fb8;       /* evidence classes */
@@ -30,15 +32,19 @@
   :root:not([data-theme="light"]) {
     --bg: #12161f; --surface: #1a2030; --surface-2: #161b28; --ink: #e9ecf2; --muted: #a9b1c1; --line: #2f3747; --accent: #c9d6ee;
     --base: #e0713f; --late: #22a276; --act: #4c90db; --obs: #4c90db; --off: #a58bd6; --rep: #e2c25a; --model: #a9b1c1; --judge: #e28bb3;
+    --act-ink: #8fc0f0;
     --band: rgba(76, 144, 219, 0.18); --band-warm: rgba(224, 160, 60, 0.16);
     --watch: #e2c25a; --ready: #f0a050; --alert: #ff8a80; --good: #7cc7a0;
+    --ready-ink: #f5b878;
   }
 }
 :root[data-theme="dark"] {
   --bg: #12161f; --surface: #1a2030; --surface-2: #161b28; --ink: #e9ecf2; --muted: #a9b1c1; --line: #2f3747; --accent: #c9d6ee;
   --base: #e0713f; --late: #22a276; --act: #4c90db; --obs: #4c90db; --off: #a58bd6; --rep: #e2c25a; --model: #a9b1c1; --judge: #e28bb3;
+  --act-ink: #8fc0f0;
   --band: rgba(76, 144, 219, 0.18); --band-warm: rgba(224, 160, 60, 0.16);
   --watch: #e2c25a; --ready: #f0a050; --alert: #ff8a80; --good: #7cc7a0;
+  --ready-ink: #f5b878;
 }
 
 * { box-sizing: border-box; }
@@ -155,7 +161,11 @@ a.card:hover { border-color: var(--act); transform: translateY(-1px); }
 .sow { background: linear-gradient(135deg, var(--accent), #2c3f68); color: #f4f2ed; border-radius: var(--r); padding: 18px 20px; }
 .sow a.btn { background: #f4f2ed; color: var(--accent); }
 .btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 15px; border-radius: 8px; background: var(--act); color: #fff; font-weight: 700; text-decoration: none; border: 0; cursor: pointer; font: inherit; font-weight: 700; }
-.btn.ghost { background: transparent; color: var(--act); border: 1px solid var(--act); }
+.btn.ghost { background: transparent; color: var(--act-ink); border: 1px solid var(--act); }
+/* The ghost button is used inside tinted panels, where the lighter action
+   colour falls to 3.95:1 against the 4.5:1 AA requirement for 16 px bold.
+   --act-ink is the same hue darkened only for text, so chart lines and borders
+   that use --act are unchanged. */
 .btn:disabled { opacity: .5; cursor: not-allowed; }
 
 /* changes and gaps */
@@ -190,6 +200,9 @@ details.more summary { cursor: pointer; font-weight: 600; color: var(--act); }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 14px; }
 .chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 12px; font: inherit; font-size: 0.86rem; cursor: pointer; color: var(--ink); }
 .chip[aria-pressed="true"] { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+/* Anything nested in a pressed chip must take the chip's own colour: --muted
+   was chosen against the light page background and measures 2.28:1 here. */
+.chip[aria-pressed="true"] .muted, .chip[aria-pressed="true"] * { color: inherit; }
 .ctrl { margin-bottom: 14px; }
 .ctrl label { display: flex; justify-content: space-between; font-weight: 600; font-size: 0.92rem; }
 .ctrl output { font-variant-numeric: tabular-nums; color: var(--act); }
@@ -351,3 +364,85 @@ select { max-width: 100%; }
 .kindtag.our_reading { color: var(--judge); border-color: var(--judge); }
 @media (max-width: 900px) { .glance { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .notice.warn { border-color: var(--ready); }
+
+/* ---------------------------------------------------------- the transmission cascade
+   How far along the food chain the published readings have reached. State is
+   never carried by colour alone: every stage and reading also carries a word. */
+.cascade { margin: 0; }
+.cascade .lede { max-width: 72ch; }
+.cascade-verdict {
+  max-width: 74ch; border-left: 3px solid var(--act); background: var(--band);
+  padding: 10px 14px; border-radius: 0 var(--r) var(--r) 0; margin: 12px 0 18px;
+}
+.cascade h4.sub { margin: 22px 0 4px; font-size: 1rem; }
+.cascade .small { max-width: 74ch; }
+
+.stages, .signs { list-style: none; padding: 0; margin: 12px 0 0; counter-reset: none; }
+.stage {
+  border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: var(--r);
+  padding: 12px 14px; margin: 0 0 4px; background: var(--surface);
+}
+.stage.reached { border-left-color: var(--ready); background: var(--band-warm); }
+.stage.easing { border-left-color: var(--late); }
+.stage.clear { border-left-color: var(--good); }
+.stage.thin { border-left-color: var(--model); background: var(--surface-2); }
+.stage.unsupported { border-left-style: dashed; }
+.stage-head { display: flex; gap: 10px; align-items: baseline; }
+.stage-head h4 { margin: 0; font-size: 1rem; }
+.stage-head p { margin: 2px 0 0; }
+.stage-n {
+  flex: 0 0 auto; width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: var(--bg);
+  display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700;
+}
+.stage-state { margin: 8px 0 0; }
+.stage-arrow { text-align: center; color: var(--muted); margin: 6px 0 0; font-size: 1.1rem; }
+
+.readings { list-style: none; padding: 0; margin: 10px 0 0; }
+.reading { border-top: 1px solid var(--line); padding: 8px 0 2px; }
+.reading-head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.reading-why { margin: 3px 0; font-size: 0.88rem; }
+.reading-why.warn, p.warn, span.warn { color: var(--ready-ink); }
+
+.sign { border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; margin: 0 0 8px; background: var(--surface); }
+.sign.supported { border-color: var(--ready); border-width: 2px; }
+.sign-head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.sign-head h4 { margin: 0; font-size: 1rem; }
+.sign p { margin: 6px 0 0; }
+
+.tag.firing { background: var(--band-warm); color: var(--ready-ink); border: 1px solid currentColor; }
+.tag.quiet { background: var(--surface-2); color: var(--good); border: 1px solid currentColor; }
+.tag.thin { background: var(--surface-2); color: var(--model); border: 1px solid currentColor; }
+.tag.late { background: var(--surface-2); color: var(--ready-ink); border: 1px solid currentColor; }
+.tag.sign { background: var(--band); color: var(--act-ink); border: 1px solid currentColor; }
+
+.depends { margin: 10px 0 0; }
+.depends > div { border-top: 1px solid var(--line); padding: 8px 0; }
+.depends dt { font-weight: 700; text-transform: capitalize; }
+.depends dd { margin: 4px 0 0; }
+.depends dd p { margin: 3px 0; font-size: 0.9rem; max-width: 74ch; }
+.cascade .note { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 10px; }
+
+.casc-line { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: baseline; }
+
+/* The chart's own table toggle, so every chart has a text alternative. */
+.chart-tools { display: flex; justify-content: flex-end; margin-bottom: 6px; }
+
+/* ---------------------------------------------------------- the four questions
+   Asked in the same order on every figure, each labelled by the kind of claim
+   it makes: the first is measured, the other three are our reading of it. */
+.four-q dl { margin: 10px 0 0; }
+.four-q dl > div { border-top: 1px solid var(--line); padding: 12px 0; }
+.four-q dl > div:first-child { border-top: 0; padding-top: 0; }
+.four-q dt { font-weight: 700; display: flex; gap: 9px; align-items: center; font-size: 1.02rem; }
+.four-q dd { margin: 6px 0 0 33px; max-width: 74ch; }
+.four-q dd p { margin: 5px 0; }
+.four-q .q-n {
+  flex: 0 0 auto; width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: var(--bg);
+  display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700;
+}
+.four-q .note { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 10px; }
+@media (max-width: 560px) { .four-q dd { margin-left: 0; } }
+
+/* The screening result on a card: a short label plus what it means. */
+.rung { margin: 6px 0 0; font-size: 0.86rem; }
+.rung b { font-weight: 700; }

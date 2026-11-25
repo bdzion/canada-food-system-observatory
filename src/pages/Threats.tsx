@@ -1,6 +1,7 @@
 // Step 3: the threats. What could go wrong, what is showing up now, and what acting early could save.
 import { useMemo, useState } from "react";
 import { Evidence } from "../components/Badges";
+import Cascade, { CascadeLine } from "../components/Cascade";
 import IndicatorCard from "../components/IndicatorCard";
 import LineChart, { Legend } from "../components/LineChart";
 import { StepFoot, StepHead } from "../components/Steps";
@@ -8,7 +9,7 @@ import { GROUP_PLAIN, ORIGIN_PLAIN, TEST_LIVE, TEST_TITLE } from "../content/pla
 import { SCEN, MODELLED, MODEL_CARDS, CATS, REG, SIG, fmtM, fmtDay, CHECKED } from "../legacy/core.js";
 import { useData } from "../lib/data";
 import { href } from "../lib/router";
-import type { EventItem, Indicator } from "../lib/types";
+import type { Chain, EventItem, Indicator, Transmission } from "../lib/types";
 import { getGuess, saveGuess } from "../lib/visit";
 
 const S: any = SCEN;
@@ -17,7 +18,11 @@ const BAND: Record<string, string> = { High: "High concern", Moderate: "Moderate
 export function ThreatsHub() {
   const { data: ev } = useData<{ items: EventItem[] }>("events.json");
   const { data: og } = useData<{ items: any[] }>("ongoing.json");
+  const { data: tr } = useData<Transmission>("transmission.json");
   const [open, setOpen] = useState<string | null>(null);
+  const chains = tr?.chains || [];
+  const byId: Record<string, Chain> = Object.fromEntries(chains.map((c) => [c.id, c]));
+  const moving = chains.filter((c) => c.stage_reached);
   const items = ev?.items || [];
   const nWarn = items.filter((e) => e.kind === "weather_alert").length;
   const nRecent = items.filter((e) => (e.kind === "recall" || e.kind === "gov_notice") && (e.date || "") >= new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10)).length;
@@ -49,14 +54,26 @@ export function ThreatsHub() {
         </a>
       </div>
 
+      <h2 style={{ marginTop: 24 }}>How far has anything travelled along a chain?</h2>
+      <p className="small muted" style={{ maxWidth: "75ch" }}>
+        For each of the seven threats below we have written out the chain of knock-on effects, from the first
+        pressure outside Canada to the moment it reaches a shop shelf, and named the published figures that
+        would show a shock at each link. This is how far those figures say anything has got.{" "}
+        {tr ? (moving.length
+          ? <>Of the {chains.length} chains, {moving.length === 1 ? "one shows" : `${moving.length} show`} readings
+            that have moved along {moving.length === 1 ? "it" : "them"}.</>
+          : <>None of the {chains.length} chains shows readings that have moved along it.</>) : null}
+      </p>
+
       <h2 style={{ marginTop: 24 }}>What if? Seven threats you can test</h2>
-      <p className="small muted" style={{ maxWidth: "75ch" }}>Each test is a simple model. It compares doing nothing, waiting until damage is visible, and acting at the first warning signs. You can change the settings. The numbers are illustrations built from stated assumptions, not forecasts.</p>
+      <p className="small muted" style={{ maxWidth: "75ch" }}>Each test is a simple model. It compares doing nothing, waiting until damage is visible, and acting at the first warning signs. You can change the settings. The numbers are illustrations built from stated assumptions, not forecasts. Beside each one is what the live figures currently say about its chain, which is a separate thing: the test never uses them.</p>
       <div className="grid3">
         {MODELLED.map((k: string) => (
           <a key={k} className="card" href={href(`/threats/${k}`)}>
             <div className="meta"><Evidence cls="scenario_output" /></div>
             <h4>What if {TEST_TITLE[k].replace(/^./, (c) => c.toLowerCase())}?</h4>
             <p>{MODEL_CARDS[k].q}</p>
+            {byId[k] && <CascadeLine chain={byId[k]} />}
           </a>
         ))}
       </div>
@@ -97,13 +114,35 @@ function LiveContext({ k }: { k: string }) {
   const inds = (data?.indicators || []).filter((i) => L?.ind?.includes(i.id));
   return (
     <section className="panel">
-      <h3>What the latest data show</h3>
+      <h3>The figures behind this chain</h3>
       <p className="small muted">{L?.text}</p>
       {inds.map((i) => <IndicatorCard key={i.id} i={i} compact role={false} />)}
       {L?.link ? <p><a href={href(L.link)}>{L.label} →</a></p> : null}
-      <p className="small"><b>The test does not use these figures.</b> You set its assumptions yourself. The live data are here so you can judge how close the situation is to the test.</p>
+      <p className="small">
+        <b>The test above does not use these figures.</b> You set its assumptions yourself, so its numbers stay
+        the same whatever the data do. The figures are here because they say how far a real disruption has
+        travelled along this chain, which is set out below.
+      </p>
     </section>
   );
+}
+
+/* What the published readings say about this chain. Separate from the test
+ * itself, which is an illustration the reader drives. */
+function LiveCascade({ k }: { k: string }) {
+  const { data, error } = useData<Transmission>("transmission.json");
+  if (error) return <p className="small warn">We could not load the live reading of this chain: {error}</p>;
+  if (!data) return <p className="small muted">Loading the live reading of this chain…</p>;
+  const chain = data.chains.find((c) => c.id === k);
+  if (!chain) {
+    return (
+      <section className="panel">
+        <h3>What the live figures say about this chain</h3>
+        <p>We do not yet publish a live reading for this test. The indicators above are the nearest we have.</p>
+      </section>
+    );
+  }
+  return <div className="panel"><Cascade chain={chain} note={data.note} /></div>;
 }
 
 export function TestPage({ k }: { k: string }) {
@@ -216,6 +255,8 @@ export function TestPage({ k }: { k: string }) {
           </div>
         </div>
       )}
+
+      <LiveCascade k={k} />
 
       <div className="grid2">
         <LiveContext k={k} />

@@ -74,6 +74,7 @@ def serve(directory: Path, port: int) -> socketserver.TCPServer:
         def log_message(self, *a):  # keep the output readable
             pass
 
+    socketserver.TCPServer.allow_reuse_address = True
     httpd = socketserver.TCPServer(("127.0.0.1", port), functools.partial(Handler, directory=str(directory)))
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     return httpd

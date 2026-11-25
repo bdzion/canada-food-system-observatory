@@ -1,7 +1,12 @@
 /* One SVG line chart used across the site: thin lines, a recessive grid,
  * an optional reference band, direct end labels, and a crosshair tooltip.
- * Identity never relies on colour alone: series also differ by dash and label. */
-import { useMemo, useState } from "react";
+ * Identity never relies on colour alone: series also differ by dash and label.
+ *
+ * Every chart also offers the same numbers as a table. These charts carry the
+ * site's central argument about acting early, and an image with a one-line
+ * description is not a text alternative to a curve: a reader using a screen
+ * reader, or anyone who wants the figures, needs the values. */
+import { useId, useMemo, useState } from "react";
 import { useWidth } from "./useWidth";
 
 export interface Pt { x: number; y: number | null }
@@ -28,9 +33,62 @@ function ticks(lo: number, hi: number, n = 4) {
   return out;
 }
 
+/* The same numbers the chart draws, as a table. Rows are the x values that any
+ * series actually has a reading at, so a sparse series shows gaps as "no data"
+ * rather than being silently filled in. */
+function ChartTable(p: Props & { id: string }) {
+  const xs = useMemo(() => {
+    const s = new Set<number>();
+    for (const se of p.series) for (const d of se.data) if (d.y != null) s.add(d.x);
+    return [...s].sort((a, b) => a - b);
+  }, [p.series]);
+  const marks = useMemo(() => {
+    const m = new Map<number, string[]>();
+    for (const v of p.vlines || []) {
+      let best: number | null = null, bd = Infinity;
+      for (const x of xs) { const d = Math.abs(x - v.x); if (d < bd) { bd = d; best = x; } }
+      if (best != null) m.set(best, [...(m.get(best) || []), v.label]);
+    }
+    return m;
+  }, [p.vlines, xs]);
+  return (
+    <div className="tablewrap">
+      <table className="data" id={p.id}>
+        <caption>{p.aria}</caption>
+        <thead>
+          <tr>
+            <th scope="col">{p.yLabel ? "Step" : "When"}</th>
+            {p.series.map((s) => <th scope="col" key={s.id}>{s.label}</th>)}
+            {(p.bands || []).map((b, i) => <th scope="col" key={"b" + i}>{b.label}</th>)}
+            {marks.size > 0 && <th scope="col">Marked</th>}
+          </tr>
+        </thead>
+        <tbody>
+          {xs.map((x) => (
+            <tr key={x}>
+              <th scope="row">{p.xFmt(x)}</th>
+              {p.series.map((s) => {
+                const d = s.data.find((q) => q.x === x);
+                return <td key={s.id}>{d && d.y != null ? p.yFmt(d.y) : "no data"}</td>;
+              })}
+              {(p.bands || []).map((b, i) => {
+                const d = b.data.find((q) => q.x === x);
+                return <td key={"b" + i}>{d && d.lo != null && d.hi != null ? `${p.yFmt(d.lo)} to ${p.yFmt(d.hi)}` : "no data"}</td>;
+              })}
+              {marks.size > 0 && <td>{(marks.get(x) || []).join("; ")}</td>}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function LineChart(p: Props) {
   const [ref, W] = useWidth<HTMLDivElement>();
   const [hover, setHover] = useState<number | null>(null);
+  const [asTable, setAsTable] = useState(false);
+  const tableId = useId();
   const H = p.height ?? (W < 560 ? 240 : 280);
   const m = { l: 54, r: W < 560 ? 12 : 120, t: 18, b: 34 };
   const iw = W - m.l - m.r, ih = H - m.t - m.b;
@@ -79,7 +137,16 @@ export default function LineChart(p: Props) {
   for (let i = 1; i < ends.length; i++) if (ends[i].y - ends[i - 1].y < 14) ends[i].y = ends[i - 1].y + 14;
   return (
     <div className="chart" ref={ref}>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={p.aria} onPointerMove={onMove} onPointerLeave={() => setHover(null)}>
+      <div className="chart-tools">
+        <button type="button" className="chip" aria-expanded={asTable} aria-controls={tableId}
+                onClick={() => setAsTable(!asTable)}>
+          {asTable ? "Show as a chart" : "Show as a table"}
+        </button>
+      </div>
+      {asTable && <ChartTable {...p} id={tableId} />}
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={p.aria}
+           style={asTable ? { display: "none" } : undefined} aria-hidden={asTable || undefined}
+           onPointerMove={onMove} onPointerLeave={() => setHover(null)}>
         <g className="grid">{yt.map((v) => <line key={v} x1={m.l} x2={m.l + iw} y1={Y(v)} y2={Y(v)} />)}</g>
         <g className="axis">
           {yt.map((v) => <text key={v} x={m.l - 8} y={Y(v) + 4} textAnchor="end">{p.yFmt(v)}</text>)}
@@ -100,7 +167,7 @@ export default function LineChart(p: Props) {
         {hover != null && p.series.map((s) => { const d = s.data.find((q) => q.x === hover); return d && d.y != null ? <circle key={s.id} cx={X(hover)} cy={Y(d.y)} r={4} fill={s.color} stroke="var(--surface)" strokeWidth={2} /> : null; })}
         <rect x={m.l} y={m.t} width={iw} height={ih} fill="transparent" />
       </svg>
-      {hover != null && (
+      {hover != null && !asTable && (
         <div className="tip" style={{ left: Math.min(X(hover) + 12, W - 200), top: 8 }}>
           <b>{p.xFmt(hover)}</b>
           {p.series.map((s) => { const d = s.data.find((q) => q.x === hover); return <div className="r" key={s.id}><span><i style={{ background: s.color }} />{s.label}</span><span>{d && d.y != null ? p.yFmt(d.y) : "no data"}</span></div>; })}

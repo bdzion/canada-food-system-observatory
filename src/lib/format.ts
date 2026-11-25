@@ -37,7 +37,10 @@ export const usdM = (v: number) => `US$${(v / 1e6).toLocaleString("en-CA", { max
 
 export const STATE: Record<string, [string, string]> = {
   within_reference_range: ["Normal for the time of year", "within"],
-  outside_reference_range_review: ["Unusual for the time of year", "out"],
+  /* Kept for older archived days. Live readings use the two-screen ladder
+     (see RungChip in components/Badges.tsx), which does not call a reading
+     unusual on the level alone. */
+  outside_reference_range_review: ["Outside past years for the time of year", "out"],
   insufficient_data: ["Not enough past data", "insufficient"],
   official_notice_active: ["Alerts in effect", "notice"],
   none_active: ["No alerts in effect", "within"],
@@ -49,7 +52,7 @@ export const EVIDENCE: Record<string, [string, string]> = {
   official_alert: ["Official warning", "A warning issued by the agency named, such as Environment and Climate Change Canada."],
   official_notice: ["Government notice", "A notice or announcement from a government department. It tells you what was announced, not what effect followed."],
   reported_event: ["News report", "Found in news coverage and not yet confirmed."],
-  screening_signal: ["Unusual reading", "A figure outside its normal range for the time of year. A reason to look closer, not a finding."],
+  screening_signal: ["Screening signal", "A figure our automatic checks picked out. A reason to look closer, not a finding."],
   scenario_output: ["What-if illustration", "The result of a simple model with stated assumptions. Not a forecast."],
   author_judgement: ["Our team's rating", "A rating made by the research team, not a measurement. It should be replaced by a structured review with experts."],
   supplier_link: ["Canada buys from here", "Canada imports this product from the country affected. We do not yet know whether the disaster affects that supply."],

@@ -10,14 +10,17 @@ from __future__ import annotations
 
 import hashlib
 import inspect
+import json
 import os
 import shutil
+import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from . import SCHEMA_VERSION
 from .connectors import CONNECTORS
-from .core import SourceError, config, iso, read_json, registry, sanitize, utc_now, write_json
+from .core import (SourceError, config, iso, load_yaml, read_json, registry, sanitize, utc_now,
+                   write_json)
 from .exposure import link_events
 from .indicators import (affordability_indicator, grain_indicator, long_date, produce_indicator,
                          recalls_indicator, weather_indicator)
@@ -148,6 +151,41 @@ def mark_lateness(inds: list[dict], sources: list[dict], today: date) -> None:
                             "expected_frequency": s["expected_frequency"],
                             "stale_after_days": s["stale_after_days"]}
         h["text"] = (h.get("text") or "").rstrip() + " " + note
+
+
+#: The order the four questions are always asked in, so a reader learns the
+#: shape once and finds the same answers in the same place on every figure.
+FOUR_QUESTIONS = [
+    ("what_happening", "What is happening?", "measured"),
+    ("why_for_canada", "Why does it matter for Canada?", "author_judgement"),
+    ("what_next", "What could happen next?", "author_judgement"),
+    ("to_consider", "What could decision-makers consider?", "author_judgement"),
+]
+
+
+def add_four_questions(inds: list[dict]) -> list[str]:
+    """Attach the three written answers to each indicator. Returns any missing.
+
+    The first answer is the measured headline the pipeline already writes. The
+    other three are written by the team in readings.yml and carry the team's
+    rating label, because they are judgement and must never be read as data.
+    """
+    written = (load_yaml("readings.yml") or {}).get("readings") or {}
+    missing = []
+    for ind in inds:
+        w = written.get(ind["id"])
+        if not w:
+            missing.append(ind["id"])
+            continue
+        ind["reading"] = {
+            "why_for_canada": w["why_for_canada"].strip(),
+            "what_next": w["what_next"].strip(),
+            "to_consider": w["to_consider"].strip(),
+            "evidence_class": "author_judgement",
+            "note": ("Written by the research team, not measured. The figure above it is published data; "
+                     "these three are our reading of what it means."),
+        }
+    return missing
 
 
 def build_indicators(ex: dict) -> tuple[list[dict], dict[str, dict]]:
@@ -381,6 +419,12 @@ def run(data_dir: Path, only: set[str] | None = None) -> dict:
     # Lateness is decided once, in the pipeline, from the source registry, and
     # travels with the indicator into every page, brief and archived day.
     mark_lateness(inds, sources, now.date())
+    no_reading = add_four_questions(inds)
+    if no_reading:
+        # Not fatal: a figure without a written reading still publishes its
+        # measurement. But it must be visible, not silent.
+        print(json.dumps({"warning": "indicators with no written reading in readings.yml",
+                          "ids": sorted(no_reading)}), file=sys.stderr)
     for sid, ser in series.items():
         write_json(new / "series" / f"{sid}.json", {"schema_version": SCHEMA_VERSION, **ser})
     links = link_events(extracts.get("GL-02"), extracts.get("GL-01"), extracts.get("CA-03"))

@@ -38,7 +38,9 @@ export function IndicatorList() {
   const { data } = useData<{ indicators: Indicator[] }>("indicators.json");
   const [asTable, setAsTable] = useState(false);
   const inds = [...(data?.indicators || [])].sort((a, b) => ORDER.indexOf(a.role) - ORDER.indexOf(b.role));
-  const nOut = inds.filter((i) => i.headline.state === "outside_reference_range_review").length;
+  /* Only the top rung each figure can actually reach counts here: see the
+     note below the cards. */
+  const nLook = inds.filter((i) => i.headline.screen?.worth_a_look).length;
   return (
     <>
       <StepHead n={2} />
@@ -80,7 +82,7 @@ export function IndicatorList() {
 
       <section aria-labelledby="h-live" style={{ marginTop: 26 }}>
         <h2 id="h-live">B. What do the latest figures show?</h2>
-        <p className="small muted">Collected automatically from government and international agencies. Each card says what period the figure covers and how old it is: some figures arrive days after the fact, others months. {data && <b>{nOut} of {inds.length} are unusual for the time of year.</b>}</p>
+        <p className="small muted">Collected automatically from government and international agencies. Each card says what period the figure covers and how old it is: some figures arrive days after the fact, others months. {data && <b>{nLook} of {inds.length} are worth a closer look today.</b>}</p>
         {!data ? <p className="muted">Loading…</p> : ORDER.map((r) => {
           const xs = inds.filter((i) => i.role === r);
           if (!xs.length) return null;
@@ -91,10 +93,88 @@ export function IndicatorList() {
             </div>
           );
         })}
-        <div className="notice info" style={{ marginTop: 14 }}><b>How we decide what is “unusual”.</b> We compare the latest figure with the same week or month in up to five past years. A figure is marked unusual only if it is higher or lower than in every one of those years. Prices from past years are first converted to today's dollars. An unusual figure is a reason to look closer, not proof of a problem.</div>
+        <div className="notice info" style={{ marginTop: 14 }}>
+          <b>How we decide what is worth a closer look.</b> We run two checks on every figure.
+          The <b>level check</b> asks whether the latest reading is higher or lower than the same week or month
+          in each of the past five years. The <b>pace check</b> asks whether it is moving faster than it usually
+          moves at this time of year. Prices are converted to today's dollars before either check.
+          <br /><br />
+          The two answer different questions, and the level check on its own is weak: with five years to compare,
+          the highest or lowest reading happens about one year in three by chance alone, and on a figure that
+          climbs year after year it happens almost every time. So a figure is only called out when <b>both</b>
+          checks agree, or when only one of them can be run for that figure and it fires. Each card says which.
+          Even then it is a reason to look closer, not proof of a problem.
+        </div>
       </section>
       <StepFoot n={2} />
     </>
+  );
+}
+
+/* The four questions, always in the same order and always labelled by the kind
+ * of claim each one makes. The first is the measured figure; the other three
+ * are the team's reading of it, which is a different thing and has to look
+ * like one. */
+function FourQuestions({ i }: { i: Indicator }) {
+  const r = i.reading;
+  const sc = i.headline.screen;
+  return (
+    <section className="panel four-q" aria-labelledby={`fourq-${i.id}`}>
+      <h2 id={`fourq-${i.id}`}>Four questions about this figure</h2>
+      <dl>
+        <div>
+          <dt><span className="q-n" aria-hidden="true">1</span> What is happening?</dt>
+          <dd>
+            <div className="meta"><Evidence cls="observation" /></div>
+            <p>{i.headline.text}</p>
+            {sc && sc.screens.length > 0 && (
+              <p className="small muted">
+                <b>{sc.rung_label}.</b> {sc.rung_means}
+                {sc.level_luck && <> {sc.level_luck}</>}
+              </p>
+            )}
+            {i.headline.late && i.headline.late_note && <p className="small warn">{i.headline.late_note}</p>}
+          </dd>
+        </div>
+        {r ? (
+          <>
+            <div>
+              <dt><span className="q-n" aria-hidden="true">2</span> Why does it matter for Canada?</dt>
+              <dd><div className="meta"><Evidence cls="author_judgement" /></div><p>{r.why_for_canada}</p></dd>
+            </div>
+            <div>
+              <dt><span className="q-n" aria-hidden="true">3</span> What could happen next?</dt>
+              <dd>
+                <div className="meta"><Evidence cls="author_judgement" /></div>
+                <p>{r.what_next}</p>
+                {i.scenario && TEST_NAME[i.scenario] && (
+                  <p className="small">
+                    <a href={href(`/threats/${i.scenario}`)}>
+                      See how far that chain has travelled, and what the live figures say →
+                    </a>
+                  </p>
+                )}
+              </dd>
+            </div>
+            <div>
+              <dt><span className="q-n" aria-hidden="true">4</span> What could decision-makers consider?</dt>
+              <dd>
+                <div className="meta"><Evidence cls="author_judgement" /></div>
+                <p>{r.to_consider}</p>
+                <p className="small muted">Options to weigh, not advice. No agency has agreed to any of them.</p>
+              </dd>
+            </div>
+          </>
+        ) : (
+          <div>
+            <dt>The other three questions</dt>
+            <dd><p className="muted">We have not yet written our reading of this figure. The measurement above
+              stands on its own.</p></dd>
+          </div>
+        )}
+      </dl>
+      {r && <p className="small muted note">{r.note}</p>}
+    </section>
   );
 }
 
@@ -118,12 +198,15 @@ export function IndicatorDetail({ id, product }: { id: string; product?: string 
       <div className="eyebrow">{ROLE[i.role]}</div>
       <h1>{i.title}</h1>
       <p className="lede">{i.question}</p>
+
+      <FourQuestions i={i} />
+
       <section className="panel">
+        <h2>The figure over time</h2>
         <div className="meta" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
           <Evidence cls={evClass(id)} />
-          <StateChip state={i.headline.state} direction={i.headline.direction} />
+          <StateChip state={i.headline.state} direction={i.headline.direction} screen={i.headline.screen} />
         </div>
-        <p style={{ fontSize: "1.1rem" }}>{i.headline.text}</p>
         <div className="cue" style={{ marginBottom: 6 }}><Trend t={i.headline.trend} freq={i.frequency} /><Age t={i.headline.observation_end} freq={i.frequency} /></div>
         <p className="small muted">Period covered: <b>{i.headline.period_label}</b>. {srcs[0]?.retrieved_at && <>Collected {dateTime(srcs[0].retrieved_at)}.</>}</p>
         {id === "weather_alerts" ? <p><a href={href("/threats/warnings?kind=weather_alert")}>See every alert in effect, on a map →</a></p> : <IndicatorChart id={id} kind={i.chart} initial={product} />}
@@ -148,7 +231,7 @@ export function IndicatorDetail({ id, product }: { id: string; product?: string 
                 <td className="num">{p.median == null ? "—" : fmtV(p.median, p.unit)}{p.inflation_adjusted && p.median != null && <div className="small muted">in today's dollars</div>}</td>
                 <td className="num">{p.vs_year_ago_pct == null ? "—" : `${p.vs_year_ago_pct > 0 ? "+" : ""}${p.vs_year_ago_pct}%`}</td>
                 <td><Spark values={p.spark} w={80} h={22} /></td>
-                <td><StateChip state={p.state} direction={p.direction} /> <span className="small muted">{p.n_years ? `based on ${p.n_years} past year${p.n_years === 1 ? "" : "s"}` : ""}</span></td></tr>))}</tbody>
+                <td><StateChip state={p.state} direction={p.direction} screen={p.screen} /> <span className="small muted">{p.n_years ? `based on ${p.n_years} past year${p.n_years === 1 ? "" : "s"}` : ""}</span></td></tr>))}</tbody>
           </table></div>
           <p className="small muted">“Typical” is the middle value of the same period in past years.{id !== "store_prices" && " Choose a series name to draw it on the chart above."}</p>
         </section>
@@ -164,7 +247,7 @@ export function IndicatorDetail({ id, product }: { id: string; product?: string 
                 <td>{p.latest_range}<div className="small muted">{longDate(p.latest_date)}</div></td>
                 <td className="num">{p.vs_median_pct == null ? "—" : `${p.vs_median_pct > 0 ? "+" : ""}${p.vs_median_pct}%`}</td>
                 <td className="num">{p.vs_4wk_pct == null ? "—" : `${p.vs_4wk_pct > 0 ? "+" : ""}${p.vs_4wk_pct}%`}</td>
-                <td><StateChip state={p.state} direction={p.direction} /> <span className="small muted">{p.n_years ? `based on ${p.n_years} past year${p.n_years === 1 ? "" : "s"}` : ""}</span></td></tr>))}</tbody>
+                <td><StateChip state={p.state} direction={p.direction} screen={p.screen} /> <span className="small muted">{p.n_years ? `based on ${p.n_years} past year${p.n_years === 1 ? "" : "s"}` : ""}</span></td></tr>))}</tbody>
           </table></div>
           <p className="small muted">“A typical year” is the middle value of past years for the same week, in today's dollars.</p>
         </section>

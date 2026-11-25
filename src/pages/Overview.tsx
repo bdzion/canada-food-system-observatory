@@ -163,23 +163,24 @@ export default function Overview({ day }: { day?: string }) {
   );
 }
 
-/* The food chain at a glance: for each link, how many of the live figures there are unusual. */
+/* The food chain at a glance: for each link, how many of the live figures
+   there are worth a closer look. */
 function Glance({ inds }: { inds: Indicator[] }) {
   const nodes = NODES as any[];
   return (
     <section aria-labelledby="h-glance">
       <h2 id="h-glance" style={{ marginBottom: 4 }}>The food chain at a glance</h2>
-      <p className="small muted" style={{ margin: 0 }}>How many of the figures we follow at each link are unusual for the time of year. Choose a link to see them.</p>
+      <p className="small muted" style={{ margin: 0 }}>How many of the figures we follow at each link are worth a closer look today, meaning both our checks agree on them. Choose a link to see them.</p>
       <div className="glance">
         {NODE_ORDER.map((id) => {
           const xs = inds.filter((i) => LIVE_NODE[i.id] === id);
-          const out = xs.filter((i) => i.headline.state === "outside_reference_range_review");
+          const out = xs.filter((i) => i.headline.screen?.worth_a_look);
           const n = nodes.find((x) => x.id === id);
           return (
             <a key={id} href={href(`/system?node=${id}`)}>
               <b>{n?.name || id}</b>
               <span className="n">{xs.length} figure{xs.length === 1 ? "" : "s"}</span><br />
-              {out.length ? <span className="flag">◆ {out.length} unusual</span> : <span className="ok">● none unusual</span>}
+              {out.length ? <span className="flag">◆ {out.length} worth a look</span> : <span className="ok">● nothing standing out</span>}
             </a>
           );
         })}
