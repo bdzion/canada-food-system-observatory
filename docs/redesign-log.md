@@ -12,16 +12,21 @@ reversible and keeps the site honest, record it here, and carry on.
 
 ## Where to pick up
 
-**Current stage: step 4 of 6 (build).** Steps 1–3 are done.
+**Current stage: step 6 of 6 (pull request).** Steps 1–5 are done. The
+definition of done is met: 80 pytest, 32 vitest, a clean `npm run build`, and
+19 pages x 2 viewports x 2 colour schemes passing with no console errors, no
+horizontal overflow and no axe violations.
 
 Next actions, in order:
 
-1. Build the trigger and transmission layer (plan items P1–P3).
-2. Build the four-question reading fields (P4).
-3. Fix the staleness-on-the-indicator problem (P5) and the PortWatch retry (P6).
-4. Accessibility fixes D1–D3.
-5. Re-run `scripts/check-pages.py`, `pytest`, `vitest`, `npm run build`.
-6. Newcomer re-read of every page; then open the pull request into `main`.
+1. Push `redesign-2026` and open the pull request into `main`. **Do not
+   merge it.** The owner reviews it.
+2. If anything is still open after that, it is in "Remaining research needs"
+   below, not in the build.
+
+Nothing in the branch is half-finished. If a later session needs to change
+something, start from the newcomer re-read notes in session 2 below, which
+list what was read and what was left alone deliberately.
 
 ## Setup facts a new session needs
 
@@ -153,3 +158,115 @@ dev-only, and does not ship in the bundle.
 - B4: the threat register's warning levels are frozen at 12 November 2026. They
   stay, as the brief requires, but they sit beside live figures. The pull
   request will propose showing the check date in the same line as the level.
+
+---
+
+## Session 2 — 25 November 2026
+
+### Done
+
+- **P1–P3, the transmission layer.** `pipeline/transmission.yml` writes out
+  seven chains of knock-on effects, each stage naming the published figures
+  that would show a shock at that link. `pipeline/cfso/transmission.py`
+  evaluates them against the live screening results and publishes
+  `transmission.json`. The site shows it on the threats hub, on each threat
+  page beside its what-if test, and in one line on the overview.
+- **P4, the four questions.** Every indicator carries `reading`, filled from
+  `pipeline/readings.yml` (22 entries): what is happening, why it matters for
+  Canada, what could happen next, what decision-makers could consider. It
+  renders above the chart on each indicator page.
+- **P5, lateness travels on the indicator.** `mark_lateness()` puts the age of
+  the data and a plain sentence about it on the figure itself, so every card,
+  brief and archived day repeats it rather than relying on a banner the reader
+  may not have seen.
+- **P6, the PortWatch retry.** ArcGIS answers a bad query with HTTP 200 and an
+  error object in the body, which the HTTP-status retry could not see.
+  `_page()` now retries on the error body with bounded back-off.
+- **P7–P8, two new sources.** CA-11 (StatCan 32-10-0013, grain stocks including
+  grain on farms, three times a year) and CA-12 (StatCan 16-10-0047, stock held
+  by food processors against what they ship, monthly). Both verified live,
+  registered in `sources.yml` with licence and refresh rules, and the first
+  connectors in this repository with parsing tests.
+- **Accessibility.** A table view for every chart. The page checker now runs
+  both colour schemes, which found 20 dark-mode contrast failures; all are
+  fixed. See commit `2680a2a`.
+- **The release contract.** `tests/release-contract.test.ts` reads the
+  published JSON the way a page does and asserts what the pages assume.
+
+### The newcomer re-read
+
+Every page was rendered from the built site and read as plain text, start to
+finish, as someone arriving cold. Seven things were changed as a result:
+
+1. `both` and `checks` rendered as "bothchecks" — JSX drops the newline
+   between a closing tag and the next line's text.
+2. The cascade's one-line summary contradicted itself where a downstream
+   reading had moved with nothing upstream behind it.
+3. The sentence introducing the what-if tests said the live reading was "a
+   separate thing" without saying separate from what.
+4. The source table printed `three_times_a_year` raw.
+5. It also printed "1 days old; marked late after 1" — a plural error and a
+   missing unit.
+6. The chain sentence ended "the evidence has reached stored supply is used
+   up", which reads as a run-on because stage names are phrases.
+7. Threat links under each timeline were separated only by whitespace, so they
+   ran together on the page and when read aloud.
+
+Two figures looked implausible and were checked against the raw extracts
+rather than trusted or quietly dropped:
+
+- Diesel at 262.9 cents a litre in October 2026, 51% above the five-year
+  median for October. The five city series in `CA-08` average to 262.94
+  exactly. Correct.
+- Grain and canola by rail at 3,791,412 tonnes in August 2026, 80% above the
+  median. Wheat 2,588,081 + other grains 628,446 + canola 574,885 = 3,791,412,
+  and the five past Augusts give median 2,111,106, min 1,477,667, max
+  2,622,536 — all matching the published headline. Correct.
+
+Both are real signals in this release, not artefacts, and both are left as
+they are.
+
+### Decisions made, with reasons
+
+**D7. A downstream reading alone never moves a chain.** The first working
+version of the cascade read "Act now" on the avian influenza chain from egg
+prices by themselves, with no outbreak anywhere in the evidence. A shock
+travelling a chain leaves a mark at each link it passes, so a reading at the
+far end with nothing behind it is not evidence that anything travelled. Stages
+now count only if the stages before them count too, an unwatched stage breaks
+the chain rather than being skipped over, and an unsupported downstream
+reading is reported as one, with a suggestion to look for another cause. This
+is the single most important correctness decision in the branch.
+
+**D8. Only |z| >= 1.0 fires the pace check.** The first threshold treated 0.5
+standard deviations as firing, which is roughly a 62% event, and the screen
+fired on 67–82% of periods. 0.5 to 1.0 is now reported as moving a little
+faster than usual but not enough to stand out.
+
+**D9. A near-zero spread says nothing.** Dividing by floating-point dust made
+any deviation look infinitely significant. Below a relative floor the pace
+screen returns no verdict rather than a huge one. Caught by a test, not in
+production.
+
+**D10. Panel headlines aggregate over the lines that are not context.** A
+panel read "clear" while one of its items was at the top rung, because the
+headline followed the main series only. Lines that are context (all
+manufacturing against food manufacturing; on-farm and commercial stocks, which
+sum to the total) carry `context: true` and are excluded from the aggregate.
+
+**D11. --on-fill rather than per-rule dark overrides.** The dark scheme
+lightens the semantic colours because they are mostly text on a dark
+background; the same tokens used as fills then need dark text. One token that
+flips with the scheme fixes every such rule at once and cannot drift apart the
+way eight separate overrides would.
+
+### Open questions for the owner, added this session
+
+- The seven chains, their stages and their trigger levels are the research
+  team's judgement, labelled as such on every page. They are the part of this
+  branch most in need of expert review, and the structured review the brief
+  asks for should start there rather than with the threat ratings.
+- `readings.yml` carries 22 hand-written "what decision-makers could consider"
+  entries. They are deliberately phrased as questions, not advice. Whether the
+  Institute wants to go further than questions is the owner's call, not a
+  technical one.
