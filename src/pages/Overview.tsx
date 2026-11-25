@@ -47,7 +47,7 @@ export default function Overview({ day }: { day?: string }) {
     <>
       <h1>Is Canada's food system ready for the next shock?</h1>
       <p className="lede" style={{ maxWidth: "78ch" }}>
-        Canada grows far more food than it eats, but food reaches people through a chain of farms, rail lines,
+        Canada grows more food than it eats. But food reaches people through a chain of farms, rail lines,
         ports, processing plants and stores, and some links in that chain have little backup. This page shows
         where the published figures stand today.
       </p>
@@ -74,15 +74,15 @@ export default function Overview({ day }: { day?: string }) {
       <section className="intro" style={{ marginTop: 26 }}>
         <div>
           <h2 style={{ marginTop: 0 }}>What this site is</h2>
-          <p>Droughts, animal diseases, strikes and trade disputes will keep happening. Whether one turns into empty shelves or lost incomes depends on how much backup each link has, and on how early governments and industry act.</p>
-          <p>This site gathers official data that are now spread across many websites, updates them automatically several times a day, and puts them in one place. It is a research tool from the University of Guelph, not an official warning service.</p>
+          <p>Droughts, animal diseases, strikes and trade disputes will keep happening. Whether one leads to empty shelves or lost incomes depends on how much backup each link has, and on how early governments and industry act.</p>
+          <p>This site brings together official data that are spread across many websites, updates them automatically four times a day, and puts them in one place. It is a research tool from the Arrell Food Institute at the University of Guelph, not an official warning service.</p>
           <p className="notice judge" style={{ marginTop: 10 }}>
-            <b>No one reviews the content before it is published.</b> Treat it as a starting point for questions,
+            <b>No one checks the automatic updates before they are published.</b> Treat them as a starting point for questions,
             not as advice. Only the responsible agency can issue a warning. Where you see{" "}
             <Evidence cls="author_judgement" /> the words are ours, not a measurement.
           </p>
           <p className="small muted">
-            Two things worth holding on to, borrowed from the United Kingdom's food security reporting: a single
+            Two points from the UK government's food security reporting are worth keeping in mind: a single
             event rarely has a measurable effect on food security on its own, and food security cannot be
             reduced to one number. That is why this site has no overall score.
           </p>
@@ -110,7 +110,7 @@ export default function Overview({ day }: { day?: string }) {
 
       <section className="panel" aria-labelledby="h-week" style={{ marginTop: 18 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "baseline" }}>
-          <h2 id="h-week" style={{ margin: 0 }}>{day ? `The situation on ${longDate(day)}` : "This week, in plain numbers"}</h2>
+          <h2 id="h-week" style={{ margin: 0 }}>{day ? `The situation on ${longDate(day)}` : "This week's update"}</h2>
           <span className="small muted">Updated {s ? dateTime(s.generated_at) : "…"}</span>
         </div>
         {!s ? <p className="muted">Loading…</p> : (
@@ -131,7 +131,7 @@ export default function Overview({ day }: { day?: string }) {
         {day && <div className="notice info">You are looking at the summary as it was recorded on {longDate(day)}. <a href={href("/")}>Back to today</a>.</div>}
       </section>
 
-      <h2>Start here</h2>
+      <h2>Explore in four steps</h2>
       <div className="stepcards">
         {STEPS.map((x) => (
           <a key={x.n} className="stepcard" href={href(x.path)}>
@@ -161,7 +161,7 @@ export default function Overview({ day }: { day?: string }) {
         <section className="panel">
           <h2>Weather warnings in effect</h2>
           {live && !day ? <p className="small"><span className="dot ok" />Checked just now with Environment and Climate Change Canada: <b>{live.count}</b> alert{live.count === 1 ? "" : "s"}, including {live.warnings} warning{live.warnings === 1 ? "" : "s"}.</p>
-            : <p className="small"><span className="dot stale" />{liveErr ? "Could not reach Environment and Climate Change Canada just now, so this map" : "This map"} shows the alerts at our last daily update.</p>}
+            : <p className="small"><span className="dot stale" />{liveErr ? "Could not reach Environment and Climate Change Canada just now, so this map" : "This map"} shows the alerts at our last update.</p>}
           <AlertMap geo={live && !day ? live.geo : geo} height={320} />
           <p className="small muted" style={{ marginTop: 6 }}>Coloured areas are forecast regions, not farmland. Full alert text is on <a href="https://weather.gc.ca/warnings/index_e.html">weather.gc.ca</a>.</p>
         </section>
@@ -194,15 +194,15 @@ function NowInOneLine({ s }: { s: Situation }) {
       <h2 id="h-now">Where things stand today</h2>
       <ul>
         <li>
-          <b>{look} of {total}</b> figures we follow are worth a closer look, meaning both of our checks agree
+          <b>{look} of {total}</b> figures we follow are worth a closer look, meaning both our checks agree
           on them. <a href={href("/indicators")}>See the figures →</a>
         </li>
         {t && (
           <li>
             {t.n_moving === 0
-              ? <>None of the <b>{t.n_chains}</b> chains of knock-on effects shows readings that have moved along it.</>
+              ? <>None of the <b>{t.n_chains}</b> chains of knock-on effects shows signs of a shock moving along it.</>
               : <>
-                  <b>{t.n_moving} of {t.n_chains}</b> chains of knock-on effects show readings that have moved
+                  <b>{t.n_moving} of {t.n_chains}</b> chains of knock-on effects show signs of a shock moving
                   along them{t.furthest[0]?.stage_label && <>. The furthest has reached the link we call
                     “{t.furthest[0].stage_label.toLowerCase()}”</>}.
                 </>}{" "}

@@ -204,7 +204,7 @@ def panel(ind: dict, lines: list[dict], *, freq: str, unit: str, main: str, cpi:
         if c["level"] and not c["converging"]:
             extra.append(f"{words(c['level'])} {'is' if c['level'] == 1 else 'are'} outside the range of past years")
         if extra:
-            head["text"] = head["text"].rstrip() + " Taking every line in this panel together, " + " and ".join(extra) + "."
+            head["text"] = head["text"].rstrip() + " Across all the series in this group, " + " and ".join(extra) + "."
     ind = {**ind, "unit": unit, "frequency": freq, "chart": "lines", "headline": head, "items": items,
            "baseline_rule": ind.get("baseline_rule") or (
                f"Compared with the same {'week' if freq in ('weekly', 'daily') else ('quarter' if freq == 'quarterly' else 'month')} "

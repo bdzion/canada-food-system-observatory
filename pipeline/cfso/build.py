@@ -31,6 +31,12 @@ from . import panels
 
 # ------------------------------------------------------------------ refresh
 
+
+def _the(provider: str) -> str:
+    """'The Canadian Grain Commission', but 'Statistics Canada': add the article where English needs it."""
+    needs = ("Canadian ", "Bank of ", "World Bank", "US ", "International ", "National ", "European ", "United Nations")
+    return ("The " + provider) if provider.startswith(needs) else provider
+
 def refresh_sources(old_dir: Path, only: set[str] | None = None) -> tuple[dict, dict]:
     """Run connectors. Returns (extracts, attempt_log)."""
     now = utc_now()
@@ -138,10 +144,10 @@ def mark_lateness(inds: list[dict], sources: list[dict], today: date) -> None:
         s = late[0]
         rhythm = LATE_WORDS.get(s["expected_frequency"], s["expected_frequency"].replace("_", " "))
         if s["health"] == "unavailable":
-            note = (f"{s['provider']} could not be read at all in this update, so there is no current figure. "
+            note = (f"{_the(s['provider'])} could not be read at all in this update, so there is no current figure. "
                     "Treat it as missing, not as unchanged.")
         else:
-            note = (f"{s['provider']} normally publishes {rhythm}, but has published nothing since "
+            note = (f"{_the(s['provider'])} normally publishes {rhythm}, but has published nothing since "
                     f"{long_date(s['observation_end'])}"
                     + (f", {s['age_days']} days ago" if s.get("age_days") is not None else "")
                     + ". This is the last figure it published, not a current one.")
