@@ -1,13 +1,17 @@
 import { Evidence } from "../components/Badges";
 import { useData } from "../lib/data";
-import { EVIDENCE, dateTime, longDate } from "../lib/format";
+import { EVIDENCE, dateTime, longDate, days } from "../lib/format";
 import { href } from "../lib/router";
 import type { Indicator, Manifest, Source } from "../lib/types";
 
 // Public record of corrections to published briefs or methods. Add entries here; never delete them.
 const CORRECTIONS: { date: string; text: string }[] = [];
 
-const FREQ: Record<string, string> = { continuous: "continuously", business_days: "every business day", monthly: "monthly", weekly: "weekly", daily: "daily", event_driven: "whenever there is news", annual: "once a year" };
+/* Every value sources.yml allows for expected_frequency needs an entry here, or the
+   raw key reaches the page. The fallback below turns underscores into spaces so a
+   new value reads as English even before someone adds it. */
+const FREQ: Record<string, string> = { continuous: "continuously", business_days: "every business day", monthly: "monthly", weekly: "weekly", daily: "daily", event_driven: "whenever there is news", annual: "once a year", three_times_a_year: "three times a year", quarterly: "every three months", biweekly: "every two weeks" };
+const freqWords = (k: string) => FREQ[k] || k.replace(/_/g, " ");
 const HEALTH: Record<string, string> = { ok: "Working", stale: "Data older than usual", error: "Latest update failed; showing earlier data", unavailable: "No data" };
 
 export default function About() {
@@ -55,7 +59,7 @@ export default function About() {
         <p>Four times a day, a program collects the latest figures from each source, checks them, compares them with past years and publishes the result on this site. If a source cannot be reached, the site keeps the last good figures, with their original dates, and marks the source as not working. A new update replaces the old one only after every file passes its checks.</p>
         <p>The weather map also checks Environment and Climate Change Canada directly each time you open the overview page. Every Monday the program writes the weekly brief for the week just ended. A copy of each day's summary is kept, so you can see what the site showed on an earlier day.</p>
         <p>The plain-language sentences are written by fixed rules from the checked figures, not by artificial intelligence. Each sentence links to the figure it describes.</p>
-        {man && <p className="small">Latest update <span className="kbd">{man.release_id}</span>, {dateTime(man.generated_at)}{man.run_url ? <> · <a href={man.run_url}>technical log</a></> : null}.</p>}
+        {man && <p className="small">Latest update {dateTime(man.generated_at)} (version <span className="kbd">{man.release_id}</span>){man.run_url ? <> · <a href={man.run_url}>technical log</a></> : null}.</p>}
       </section>
 
       <section className="panel" id="sec-sources">
@@ -64,9 +68,9 @@ export default function About() {
           <thead><tr><th>Source</th><th>Status</th><th>Latest data</th><th>Last collected</th><th>Terms of use</th></tr></thead>
           <tbody>{(src || []).map((s) => (
             <tr key={s.id}>
-              <td><a href={s.documentation_url}>{s.provider}</a><div className="small">{s.dataset}</div><div className="small muted">Published {FREQ[s.expected_frequency] || s.expected_frequency}</div></td>
+              <td><a href={s.documentation_url}>{s.provider}</a><div className="small">{s.dataset}</div><div className="small muted">Published {freqWords(s.expected_frequency)}</div></td>
               <td><span className={`dot ${s.health}`} />{HEALTH[s.health]}{s.error && <div className="small muted">{s.error}</div>}</td>
-              <td>{longDate(s.observation_end)}{s.age_days != null && <div className="small muted">{s.age_days} days old; marked late after {s.stale_after_days}</div>}</td>
+              <td>{longDate(s.observation_end)}{s.age_days != null && <div className="small muted">{days(s.age_days)} old; marked late after {days(s.stale_after_days)}</div>}</td>
               <td className="small">{dateTime(s.last_success_at || s.retrieved_at)}</td>
               <td className="small">{s.licence_url ? <a href={s.licence_url}>{s.licence}</a> : s.licence}</td></tr>))}</tbody>
         </table></div>
@@ -117,7 +121,7 @@ export default function About() {
 
       <section className="panel" id="sec-ratings">
         <h2>Our team's ratings</h2>
-        <p>The list of eighteen threats, their levels of concern, their warning levels and the exposure ratings of the twelve weak points come from the <a href="https://bdzion.github.io/canada-food-stress-test/">Canada Food System Stress Test</a>. They are the research team's preliminary judgement, labelled <Evidence cls="author_judgement" /> wherever they appear, and never mixed into the official figures or the automatic summaries. A structured review with experts should replace them.</p>
+        <p>The list of threats, their levels of concern, their warning levels and the exposure ratings of the weak points come from the <a href="https://bdzion.github.io/canada-food-stress-test/">Canada Food System Stress Test</a>. They are the research team's preliminary judgement, labelled <Evidence cls="author_judgement" /> wherever they appear, and never mixed into the official figures or the automatic summaries. A structured review with experts should replace them.</p>
       </section>
 
       <section className="panel" id="sec-limits">
@@ -140,7 +144,7 @@ export default function About() {
       <section className="panel" id="sec-reuse">
         <h2>Reuse</h2>
         <p>Every indicator page has a download button. The full history of updates is kept in the project's <a href="https://github.com/bdzion/canada-food-system-observatory/tree/data">public data archive</a>. Please credit the original sources listed above, under their terms of use.</p>
-        <p>Suggested citation: Bodrud-Doza, M. ({new Date().getFullYear()}). <i>Canada Food System Observatory</i> [research prototype]. Arrell Food Institute, University of Guelph. https://bdzion.github.io/canada-food-system-observatory/ (data update {man?.release_id || "…"}).</p>
+        <p>Suggested citation: Bodrud-Doza, M. ({(man?.generated_at || "").slice(0, 4) || "n.d."}). <i>Canada Food System Observatory</i> [research prototype]. Arrell Food Institute, University of Guelph. https://bdzion.github.io/canada-food-system-observatory/ (data update {man?.release_id || "…"}).</p>
       </section>
     </>
   );

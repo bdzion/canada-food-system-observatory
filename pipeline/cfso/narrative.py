@@ -27,7 +27,7 @@ SCENARIO_TITLE = {
 PRAIRIES = {"AB", "SK", "MB"}
 STATE_WORDS = {
     "within_reference_range": "normal for the time of year",
-    "outside_reference_range_review": "unusual for the time of year",
+    "outside_reference_range_review": "outside past years for the time of year",
     "insufficient_data": "not enough past data to compare",
     "official_notice_active": "alerts in effect",
     "none_active": "no alerts in effect",
@@ -98,8 +98,10 @@ def situation(release_id: str, now: datetime, inds: list[dict], events: dict, li
         c = moved[0]
         head.append({"theme": "How far it has travelled",
                      "text": (f"Of the {len(tr)} chains of knock-on effects we follow, {len(moved)} show readings that "
-                              f"have moved along them. The furthest is “{c['title'].lower()}”, where the evidence has "
-                              f"reached {c['stage_reached_label'].lower()}."),
+                              f"have moved along them. The furthest is “{c['title'][:1].lower() + c['title'][1:]}”, where the "
+                              # The stage name is a phrase, not a noun ("stored supply is used up"),
+                              # so without quotation marks the sentence reads as a run-on.
+                              f"evidence has reached the link we call “{c['stage_reached_label'].lower()}”."),
                      "evidence": [w["indicator"] for s in c["stages"] for w in s["watch"] if w["firing"]][:5],
                      "link": f"/threats/{c['id']}"})
     if current_glob:
@@ -172,7 +174,7 @@ def situation(release_id: str, now: datetime, inds: list[dict], events: dict, li
     if fert:
         qs.append({"text": f"A disaster has hit a country that supplies Canadian farms with {fert[0]['canada_link']['commodities'][0]['label'].lower()}. If supply is disrupted, would it be before spring seeding?", "scenario": "phosphate"})
     if not qs:
-        qs.append({"text": "None of the readings we track is unusual this week. Which weak point would you check first if that changed?", "scenario": None})
+        qs.append({"text": "None of the readings we track stands out this week. Which weak point would you check first if that changed?", "scenario": None})
 
     # ---- one stress test to explore this week, with the reason
     # The cascade decides this now: the chain whose readings have travelled
@@ -226,7 +228,13 @@ def situation(release_id: str, now: datetime, inds: list[dict], events: dict, li
         "changes": changes,
         "gaps": gaps,
         "counts": {"global_current": len(current_glob), "global_l1": len(l1), "events": len(items),
+                   # Kept for archived days written before the two-screen ladder.
                    "unusual": sum(1 for i in inds if i.get("headline", {}).get("state") == "outside_reference_range_review"),
+                   # What the site now leads with: both checks agreeing, or the
+                   # only check that is meaningful for that figure firing.
+                   "worth_a_look": sum(1 for i in inds
+                                       if (i.get("headline", {}).get("screen") or {}).get("worth_a_look")),
+                   "late_sources": len(gaps),
                    "indicators": len(inds)},
         "ongoing": [{"id": d["id"], "title": d["title"], "since": d["since"], "days": d["days"], "live": d["live"],
                      "review_overdue": d["review_overdue"], "expired": d.get("expired")} for d in ongoing],

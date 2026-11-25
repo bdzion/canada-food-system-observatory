@@ -30,6 +30,9 @@ export function ago(s?: string | null): string {
   if (h < 36) return `${h} hours ago`;
   return `${Math.round(h / 24)} days ago`;
 }
+/* "1 day" not "1 days". Used wherever an age or a threshold in days is shown. */
+export const days = (n: number) => `${n} ${n === 1 ? "day" : "days"}`;
+
 export const num = (v: number | null | undefined, d = 0) =>
   v == null || !isFinite(v) ? "—" : v.toLocaleString("en-CA", { minimumFractionDigits: d, maximumFractionDigits: d });
 export const pct = (v: number | null | undefined, d = 1) => (v == null ? "—" : `${v > 0 ? "+" : ""}${v.toFixed(d)}%`);
