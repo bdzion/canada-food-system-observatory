@@ -31,7 +31,7 @@ export function ThreatsHub() {
   return (
     <>
       <StepHead n={3} />
-      <p style={{ maxWidth: "75ch" }}>A threat is anything that could break a link in the chain: bad weather, an animal disease, a strike, a cyberattack, a trade dispute. Some start in Canada, others abroad. This step lists the eighteen threats we track, shows which ones are showing up now, and lets you test what acting early could save.</p>
+      <p style={{ maxWidth: "75ch" }}>A threat is anything that could break a link in the chain: bad weather, an animal disease, a strike, a cyberattack, a trade dispute. Some start in Canada, others abroad. This step lists the {(REG as any[]).length} threats we track, shows which ones are showing up now, and lets you test what acting early could save.</p>
 
       <h2>Is anything happening now?</h2>
       {(og?.items || []).map((o) => (
@@ -65,8 +65,8 @@ export function ThreatsHub() {
           : <>None of the {chains.length} chains shows readings that have moved along it.</>) : null}
       </p>
 
-      <h2 style={{ marginTop: 24 }}>What if? Seven threats you can test</h2>
-      <p className="small muted" style={{ maxWidth: "75ch" }}>Each test is a simple model. It compares doing nothing, waiting until damage is visible, and acting at the first warning signs. You can change the settings. The numbers are illustrations built from stated assumptions, not forecasts. Beside each one is what the live figures currently say about its chain, which is a separate thing: the test never uses them.</p>
+      <h2 style={{ marginTop: 24 }}>What if? {MODELLED.length} threats you can test</h2>
+      <p className="small muted" style={{ maxWidth: "75ch" }}>Each test is a simple model. It compares doing nothing, waiting until damage is visible, and acting at the first warning signs. You can change the settings. The numbers are illustrations built from stated assumptions, not forecasts. Beside each test you will also see how far the live figures have travelled along that threat's chain. That is a separate reading, and the test itself does not use it: the test runs on the assumptions you set, not on today's data.</p>
       <div className="grid3">
         {MODELLED.map((k: string) => (
           <a key={k} className="card" href={href(`/threats/${k}`)}>
@@ -78,7 +78,7 @@ export function ThreatsHub() {
         ))}
       </div>
 
-      <h2 style={{ marginTop: 24 }}>All eighteen threats we track</h2>
+      <h2 style={{ marginTop: 24 }}>All {(REG as any[]).length} threats we track</h2>
       <div className="notice judge"><Evidence cls="author_judgement" /> The level of concern and the warning level for each threat are the research team's own ratings, carried over from the <a href="https://bdzion.github.io/canada-food-stress-test/">Canada Food System Stress Test</a>. They are not measurements. A structured review with experts should replace them.</div>
       {(CATS as any[]).map((c) => {
         const rows = (REG as any[]).filter((r) => r.cat === c.id).sort((a, b) => b.score - a.score);
@@ -103,6 +103,25 @@ export function ThreatsHub() {
       <p className="small muted">Warning levels run from Normal to Watch, Get ready and Act now. They show how the team would read the signs at the date of the last check ({CHECKED}); they are not live readings.</p>
       <StepFoot n={3} />
     </>
+  );
+}
+
+/* The legacy models hold this under the key `playbook`. That word is ruled out
+ * for this site, and no reader ever sees it; it survives only because
+ * src/legacy/core.js is a verbatim copy of the pinned stress-test page and the
+ * regression test depends on that. Read it as "what could be agreed in
+ * advance", which is what the heading says. */
+function AgreedInAdvance({ s }: { s: any }) {
+  const agreed = s.playbook;
+  return (
+    <section className="panel">
+      <h3>What could be agreed before it happens</h3>
+      <p className="small muted">A proposal for discussion. No agency has agreed to it.</p>
+      <p><b>When to act.</b> {agreed.trigger}</p>
+      <p><b>What to do.</b> {agreed.action}</p>
+      <p><b>How to pay for it.</b> {agreed.money}</p>
+      <p><b>How to tell whether it worked.</b> {agreed.learning}</p>
+    </section>
   );
 }
 
@@ -260,14 +279,7 @@ export function TestPage({ k }: { k: string }) {
 
       <div className="grid2">
         <LiveContext k={k} />
-        <section className="panel">
-          <h3>What could be agreed before it happens</h3>
-          <p className="small muted">A proposal for discussion. No agency has agreed to it.</p>
-          <p><b>When to act.</b> {s.playbook.trigger}</p>
-          <p><b>What to do.</b> {s.playbook.action}</p>
-          <p><b>How to pay for it.</b> {s.playbook.money}</p>
-          <p><b>How to tell whether it worked.</b> {s.playbook.learning}</p>
-        </section>
+        <AgreedInAdvance s={s} />
       </div>
       <section className="panel">
         <h3>The assumptions behind this test</h3>

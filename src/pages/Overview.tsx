@@ -45,22 +45,14 @@ export default function Overview({ day }: { day?: string }) {
   const notices = (events?.items || []).filter((e) => e.kind === "recall" || e.kind === "gov_notice").slice(0, 6);
   return (
     <>
-      <section className="intro">
-        <div>
-          <h1>Is Canada's food system ready for the next shock?</h1>
-          <p className="lede">Canada grows far more food than it eats. But food reaches people through a chain of farms, rail lines, ports, processing plants and stores, and some links in that chain have little or no backup.</p>
-          <p>Droughts, animal diseases, strikes and trade disputes will keep happening. Whether one turns into empty shelves or lost incomes depends on how much backup each link has, and on how early governments and industry act.</p>
-          <p>This site gathers official data that are now spread across many websites, updates them automatically several times a day, and puts them in one place. It is a research tool from the University of Guelph, not an official warning service.</p>
-        </div>
-        <div className="howto">
-          <b>How to use this site</b>
-          <p style={{ marginTop: 6 }}>Read it as four steps. Each step answers one question and leads to the next.</p>
-          <ol style={{ paddingLeft: 18, margin: 0 }}>
-            {STEPS.map((x) => <li key={x.n}><a href={href(x.path)}>{x.title}</a>: {x.q}</li>)}
-          </ol>
-          <p className="small muted" style={{ marginTop: 8 }}>Every figure shows where it comes from and the date it describes. Labels such as <Evidence cls="observation" /> and <Evidence cls="author_judgement" /> tell you what kind of information you are looking at.</p>
-        </div>
-      </section>
+      <h1>Is Canada's food system ready for the next shock?</h1>
+      <p className="lede" style={{ maxWidth: "78ch" }}>
+        Canada grows far more food than it eats, but food reaches people through a chain of farms, rail lines,
+        ports, processing plants and stores, and some links in that chain have little backup. This page shows
+        where the published figures stand today.
+      </p>
+
+      {s && <NowInOneLine s={s} />}
 
       {!day && (ongoing?.items || []).map((o) => (
         <section key={o.id} className="ongoing" aria-labelledby={`h-${o.id}`}>
@@ -78,6 +70,32 @@ export default function Overview({ day }: { day?: string }) {
       ))}
 
       {indData && <Glance inds={indData.indicators} />}
+
+      <section className="intro" style={{ marginTop: 26 }}>
+        <div>
+          <h2 style={{ marginTop: 0 }}>What this site is</h2>
+          <p>Droughts, animal diseases, strikes and trade disputes will keep happening. Whether one turns into empty shelves or lost incomes depends on how much backup each link has, and on how early governments and industry act.</p>
+          <p>This site gathers official data that are now spread across many websites, updates them automatically several times a day, and puts them in one place. It is a research tool from the University of Guelph, not an official warning service.</p>
+          <p className="notice judge" style={{ marginTop: 10 }}>
+            <b>No one reviews the content before it is published.</b> Treat it as a starting point for questions,
+            not as advice. Only the responsible agency can issue a warning. Where you see{" "}
+            <Evidence cls="author_judgement" /> the words are ours, not a measurement.
+          </p>
+          <p className="small muted">
+            Two things worth holding on to, borrowed from the United Kingdom's food security reporting: a single
+            event rarely has a measurable effect on food security on its own, and food security cannot be
+            reduced to one number. That is why this site has no overall score.
+          </p>
+        </div>
+        <div className="howto">
+          <b>How to use this site</b>
+          <p style={{ marginTop: 6 }}>Read it as four steps. Each step answers one question and leads to the next.</p>
+          <ol style={{ paddingLeft: 18, margin: 0 }}>
+            {STEPS.map((x) => <li key={x.n}><a href={href(x.path)}>{x.title}</a>: {x.q}</li>)}
+          </ol>
+          <p className="small muted" style={{ marginTop: 8 }}>Every figure shows where it comes from and the date it describes. Labels such as <Evidence cls="observation" /> and <Evidence cls="author_judgement" /> tell you what kind of information you are looking at.</p>
+        </div>
+      </section>
 
       <h2>Four facts about where Canada is exposed</h2>
       <div className="facts">
@@ -160,6 +178,45 @@ export default function Overview({ day }: { day?: string }) {
         </section>
       </div>
     </>
+  );
+}
+
+/* The state of the system in one line, for a reader who has thirty seconds.
+   Everything in it is already published in situation.json; nothing is computed
+   here beyond counting. */
+function NowInOneLine({ s }: { s: Situation }) {
+  const t = s.transmission;
+  const look = s.counts?.worth_a_look ?? 0;
+  const total = s.counts?.indicators ?? 0;
+  const late = s.gaps?.length ?? 0;
+  return (
+    <section className="nowline" aria-labelledby="h-now">
+      <h2 id="h-now">Where things stand today</h2>
+      <ul>
+        <li>
+          <b>{look} of {total}</b> figures we follow are worth a closer look, meaning both of our checks agree
+          on them. <a href={href("/indicators")}>See the figures →</a>
+        </li>
+        {t && (
+          <li>
+            {t.n_moving === 0
+              ? <>None of the <b>{t.n_chains}</b> chains of knock-on effects shows readings that have moved along it.</>
+              : <>
+                  <b>{t.n_moving} of {t.n_chains}</b> chains of knock-on effects show readings that have moved
+                  along them{t.furthest[0]?.stage_label && <>. The furthest has reached the link we call
+                    “{t.furthest[0].stage_label.toLowerCase()}”</>}.
+                </>}{" "}
+            <a href={href("/threats")}>See the chains →</a>
+          </li>
+        )}
+        {late > 0 && (
+          <li>
+            <b>{late}</b> source{late === 1 ? " is" : "s are"} late or unavailable, so some figures below are the
+            last ones published rather than current ones. <a href={href("/about#sec-sources")}>Which ones →</a>
+          </li>
+        )}
+      </ul>
+    </section>
   );
 }
 

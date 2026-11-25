@@ -181,11 +181,19 @@ export function CascadeLine({ chain }: { chain: Chain }) {
     const allUnwatched = chain.unwatched_stages.length === chain.stages.length;
     return (
       <span className="casc-line">
+        {/* When a downstream stage has moved but nothing upstream supports it, saying
+            "nothing has travelled" first and then "a reading has moved" reads as a
+            contradiction. Lead with the unsupported reading instead and explain it. */}
         <span className="tag quiet">
-          {allUnwatched ? "No live figures for this chain" : "Nothing has travelled along this chain"}
+          {allUnwatched
+            ? "No live figures for this chain"
+            : chain.unsupported_stages.length > 0
+              ? "Nothing has travelled along this chain in order"
+              : "Nothing has travelled along this chain"}
         </span>
         {chain.unsupported_stages.length > 0 && (
-          <span className="muted small"> A reading further down has moved, with nothing earlier to support it.</span>
+          <span className="muted small"> One reading near the end of the chain has moved, but no
+            earlier link has, so a shock travelling along this chain is unlikely to be the cause.</span>
         )}
       </span>
     );
