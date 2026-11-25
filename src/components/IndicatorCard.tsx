@@ -22,7 +22,8 @@ export default function IndicatorCard({ i, role = true, compact = false }: { i: 
         <Trend t={h.trend} freq={i.frequency} />
         <Age t={h.observation_end} freq={i.frequency} />
       </div>
-      <div className="period">{h.period_label} <StateChip state={h.state} direction={h.direction} /></div>
+      <div className="period">{h.period_label} <StateChip state={h.state} direction={h.direction} screen={h.screen} /></div>
+      {h.late && <p className="rung warn">Late: this source has not published since then.</p>}
     </a>
   );
 }

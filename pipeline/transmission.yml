@@ -1,0 +1,443 @@
+# How a shock could pass along the food chain, and what would show it.
+#
+# One chain for each what-if test in step 3. Each chain is a short, ordered set
+# of stages. A stage says HOW FAR ALONG THE CHAIN THE EVIDENCE HAS REACHED, not
+# how bad things are. The design follows the European Drought Observatory's
+# Combined Drought Indicator, which classifies a place by which link of the
+# drought cascade its evidence has reached rather than by a severity score
+# (docs/benchmarking.md, section 6).
+#
+# Everything in this file is the research team's judgement. There is no
+# validated Canadian threshold for any of these chains, and inventing the
+# appearance of one would be worse than useless. What is NOT judgement is the
+# reading itself: each `watch` entry names a published indicator and the
+# screening result that counts as that indicator speaking, and the site shows
+# both so a reader can check the chain against the figures.
+#
+# Fields on a `watch` entry:
+#   indicator   the live indicator's id
+#   item        optional: one line within that indicator (one food, one port)
+#   rungs       which screening results count as this indicator firing.
+#               level = outside the range of past years for the time of year;
+#               pace = moving unusually fast; converging = both.
+#   direction   which way the reading has to move to mean this: up, down, or
+#               either. A rail blockage shows as grain PILING UP, so direction
+#               matters and is not always the obvious one.
+#   why         plain-language reason this reading belongs at this stage.
+#
+# A stage with no `watch` entries is marked unwatched, and the site says so
+# rather than reporting it as clear. That is the honest state for the stages
+# where Canada has no open, current data: animal disease and cyber incidents.
+
+stages:
+  # The ordered vocabulary, shared by every chain. A chain uses the stages that
+  # apply to it and skips the rest.
+  - id: pressure
+    label: Pressure from outside
+    what: A cost, a price or a supply route outside the chain has moved.
+  - id: flow
+    label: Things stop moving
+    what: Goods are moving more slowly through rail, ports or sea lanes.
+  - id: buffer
+    label: Stored supply is used up
+    what: Stocks are being drawn down, or are piling up because they cannot move.
+  - id: household
+    label: It reaches people
+    what: Prices in shops, or what people can afford, have moved.
+
+chains:
+  rail:
+    title: The main rail line to Vancouver closes
+    summary: >-
+      A closed rail corridor first stops grain moving, then fills the elevators
+      behind it, then empties the plants and shops in front of it.
+    stages:
+      - id: pressure
+        link: transport
+        watch:
+          - {indicator: work_stoppages, rungs: [level, converging], direction: up,
+             why: "A strike or lockout under way is how most rail closures start."}
+          - {indicator: diesel, rungs: [converging], direction: up,
+             why: "Trucking is the fallback when rail stops, and its cost sets how much of that is affordable."}
+      - id: flow
+        link: transport
+        watch:
+          - {indicator: rail_freight, rungs: [level, pace, converging], direction: down,
+             why: "Fewer tonnes loaded onto railways is the most direct sign that the corridor is not working."}
+          - {indicator: grain_exports, rungs: [level, pace, converging], direction: down,
+             why: "Grain leaving port terminals falls within days of a corridor closing."}
+          - {indicator: ports, rungs: [level, pace, converging], direction: down,
+             why: "Cargo loaded at Vancouver and Prince Rupert falls when nothing arrives by rail."}
+      - id: buffer
+        link: transport
+        watch:
+          - {indicator: grain_stocks, rungs: [level, pace, converging], direction: up,
+             why: "Grain piling up in elevators is the sign of a blockage, not of a comfortable reserve. Read it with the shipment figures: high stocks and low shipments together mean grain that cannot move."}
+          - {indicator: food_mfg_inventory, rungs: [level, pace, converging], direction: down,
+             why: "Processors drawing down stock faster than usual means what they need is not arriving."}
+      - id: household
+        link: stores
+        watch:
+          - {indicator: store_prices, rungs: [converging], direction: up,
+             why: "Shelf prices are the last thing to move, and the slowest."}
+    triggers:
+      watch:
+        stage: pressure
+        min_firing: 1
+        text: >-
+          A strike notice, a flood warning or an unusual rise in trucking costs. At this point the
+          corridor is still working.
+      ready:
+        stage: flow
+        min_firing: 1
+        text: >-
+          Rail tonnes, port cargo or grain shipments falling unusually fast. This is where moving
+          food, feed and fertilizer first, and booking trucks and other ports, still changes the outcome.
+      act:
+        stage: buffer
+        min_firing: 1
+        text: >-
+          Elevators filling while shipments stay low, or processors drawing down stock. By here the
+          damage is already being done and the response is about limiting it.
+    depends_on:
+      - indicator: rail_freight
+        assumption: >-
+          Monthly rail tonnes are the best available measure of whether the corridor is working.
+        would_change: >-
+          They arrive about two months after the month ends, so a closure that starts and finishes
+          inside a month may never appear. A sharp fall in port cargo or grain shipments, which are
+          weekly, would reach this chain first.
+      - indicator: grain_stocks
+        assumption: >-
+          Grain piling up in commercial elevators means a blockage rather than a good harvest.
+        would_change: >-
+          A large harvest raises stocks for a reason that has nothing to do with transport. If stocks
+          rise while shipments stay normal, this stage should not be read as a blockage.
+
+  phosphate:
+    title: Fertilizer imports are cut before seeding
+    summary: >-
+      A closed route or a trade dispute raises world fertilizer prices first, then what Canadian
+      farmers pay, then next year's crops.
+    stages:
+      - id: pressure
+        link: inputs
+        watch:
+          - {indicator: sea_lanes, rungs: [level, pace, converging], direction: down,
+             why: "About a third of the world's seaborne fertilizer trade normally passes through the Strait of Hormuz, so fewer ships there is an early sign."}
+          - {indicator: world_fertilizer, rungs: [pace, converging], direction: up,
+             why: "World fertilizer prices move within weeks of a supply disruption, well before Canadian farmers buy."}
+      - id: flow
+        link: transport
+        watch:
+          - {indicator: rail_freight, rungs: [level, pace, converging], direction: down,
+             why: "Potash and other fertilizer move by rail; a fall means less is reaching dealers."}
+          - {indicator: ports, rungs: [level, pace, converging], direction: down,
+             why: "Imported fertilizer arrives through the same ports as grain leaves."}
+      - id: buffer
+        link: inputs
+        watch:
+          - {indicator: farm_inputs, rungs: [pace, converging], direction: up,
+             why: "What Canadian farmers actually pay. This is the point at which a world price becomes a Canadian cost."}
+          - {indicator: exchange_rate, rungs: [pace, converging], direction: up,
+             why: "Fertilizer is priced in US dollars, so a weaker Canadian dollar adds to the cost even when the world price is flat."}
+      - id: household
+        link: stores
+        watch:
+          - {indicator: store_prices, rungs: [converging], direction: up,
+             why: "A fertilizer shock reaches shops a season later, through smaller crops, if at all."}
+    triggers:
+      watch:
+        stage: pressure
+        min_firing: 1
+        text: >-
+          A sea lane closing or world fertilizer prices rising unusually fast. There is usually a
+          season between this and seeding.
+      ready:
+        stage: buffer
+        min_firing: 1
+        text: >-
+          What farmers pay rising unusually fast, or the dollar weakening on top of it. Alternative
+          supply takes about eight weeks to reach farms, so this is the last useful moment.
+      act:
+        stage: household
+        min_firing: 1
+        text: >-
+          Shop prices moving. By this point the crop has already been grown with whatever fertilizer
+          was available.
+    depends_on:
+      - indicator: farm_inputs
+        assumption: >-
+          The farm input price index shows what farmers are paying now.
+        would_change: >-
+          It is published every three months, and many farmers book fertilizer months ahead at a
+          price fixed then. So the index can stay flat while next spring's cost is already set, and
+          it can rise after the decisions that mattered have been taken.
+      - indicator: sea_lanes
+        assumption: >-
+          Ship counts at the Strait of Hormuz stand in for fertilizer supply reaching world markets.
+        would_change: >-
+          The counts do not say what the ships carry. If fertilizer found another route, transits
+          could stay low while supply recovered.
+
+  drought:
+    title: A severe drought hits the Prairies
+    summary: >-
+      Dry soil reduces the crop and the hay, which empties feed stores, which forces herd sales and
+      lifts prices.
+    stages:
+      - id: pressure
+        link: farms
+        watch:
+          - {indicator: prairie_drought, rungs: [level, converging], direction: up,
+             why: "The share of Prairie farmland in moderate drought or worse, from the Canadian Drought Monitor."}
+          - {indicator: us_drought, rungs: [level, converging], direction: up,
+             why: "Drought in California, Arizona, Florida and Washington affects the fruit and vegetables Canada imports, so a dry year on both sides leaves fewer alternatives."}
+      - id: buffer
+        link: farms
+        watch:
+          - {indicator: grain_stocks, rungs: [level, pace, converging], direction: down,
+             why: "A smaller harvest shows up as less grain in store, with a lag of months."}
+          - {indicator: farm_grain_stocks, rungs: [level], direction: down,
+             why: "The only reading that includes grain on farms, which is where feed grain is held."}
+      - id: household
+        link: stores
+        watch:
+          - {indicator: produce_prices, rungs: [converging], direction: up,
+             why: "Wholesale fruit and vegetable prices respond to drought where the food is grown, including abroad."}
+          - {indicator: store_prices, rungs: [converging], direction: up,
+             why: "Shop prices follow a drought by a season or more, mostly through meat and dairy."}
+    triggers:
+      watch:
+        stage: pressure
+        min_firing: 1
+        text: >-
+          Moderate drought or worse on the Drought Monitor during the growing season. Sourcing feed
+          now is cheap; sourcing it in August is not.
+      ready:
+        stage: buffer
+        min_firing: 1
+        text: >-
+          Grain and feed stocks falling unusually fast or unusually low. Feed takes about a month to
+          arrive once it is ordered.
+      act:
+        stage: household
+        min_firing: 1
+        text: >-
+          Prices moving in shops and at wholesale. Herd sales have usually already happened.
+    depends_on:
+      - indicator: prairie_drought
+        assumption: >-
+          The share of each Prairie province south of 54 degrees north in drought stands in for the
+          share of its farmland in drought.
+        would_change: >-
+          The areas measured are straight-sided boxes that include forest, lakes and towns, and the
+          monitor's archive starts in 2023, so there are at most three years to compare and this
+          reading cannot set off the level check on its own. A crop-area mask would change both.
+      - indicator: grain_stocks
+        assumption: >-
+          Falling grain stocks after a dry summer reflect a smaller harvest.
+        would_change: >-
+          Strong exports empty the same elevators for the opposite reason. Read the shipment figures
+          alongside: stocks falling while shipments are high is a good year, not a bad one.
+
+  export:
+    title: A major buyer closes its market
+    summary: >-
+      A lost market first stops shipments, then fills storage, then cuts farm incomes. Shop prices
+      may not move at all.
+    stages:
+      - id: pressure
+        link: exports
+        watch:
+          - {indicator: exchange_rate, rungs: [pace, converging], direction: either,
+             why: "A trade dispute usually moves the currency before it moves the cargo."}
+          - {indicator: world_prices, rungs: [pace, converging], direction: down,
+             why: "A large buyer leaving the market can pull world prices down for everyone selling the same crop."}
+      - id: flow
+        link: exports
+        watch:
+          - {indicator: grain_exports, rungs: [level, pace, converging], direction: down,
+             why: "Grain leaving port terminals is the clearest sign that sales have stopped."}
+          - {indicator: ports, rungs: [level, pace, converging], direction: down,
+             why: "Cargo loaded at Canadian ports covers more than grain, so it shows a broader loss."}
+      - id: buffer
+        link: transport
+        watch:
+          - {indicator: grain_stocks, rungs: [level, pace, converging], direction: up,
+             why: "Grain that cannot be sold stays in store."}
+          - {indicator: farm_grain_stocks, rungs: [level], direction: up,
+             why: "When commercial elevators are full, the grain stays on farms."}
+    triggers:
+      watch:
+        stage: pressure
+        min_firing: 1
+        text: >-
+          A trade action threatened, with the currency or world prices moving. Finding other buyers
+          is far easier before the duty takes effect.
+      ready:
+        stage: flow
+        min_firing: 1
+        text: >-
+          Shipments and port cargo falling. Redirecting sales and financing storage still helps here.
+      act:
+        stage: buffer
+        min_firing: 1
+        text: >-
+          Storage filling up. From here farmers are choosing between selling cheaply and paying to store.
+    depends_on:
+      - indicator: grain_exports
+        assumption: >-
+          A fall in grain leaving port terminals reflects lost sales.
+        would_change: >-
+          A rail or port problem produces exactly the same fall. If the rail chain is also showing
+          movement, the cause is more likely transport than trade.
+
+  avian-flu:
+    title: Bird flu reaches a major poultry region
+    summary: >-
+      An outbreak kills birds and closes export markets, then shows up as fewer eggs and birds, then
+      as prices.
+    stages:
+      - id: pressure
+        link: farms
+        watch: []
+        unwatched_why: >-
+          Canada has no current, openly licensed count of infected premises. The Canadian Food
+          Inspection Agency's reportable terrestrial animal disease dataset is published under the
+          Open Government Licence but stops in 2021, so there is nothing to read here. Its
+          announcements appear under the current warnings, with their headline, date and link only.
+      - id: buffer
+        link: processing
+        watch:
+          - {indicator: food_mfg_inventory, rungs: [level, pace, converging], direction: down,
+             why: "Processors drawing down stock is the first measurable sign that supply has been interrupted, though it covers all food and not poultry alone."}
+      - id: household
+        link: stores
+        watch:
+          - {indicator: store_prices, item: eggs, rungs: [level, pace, converging], direction: up,
+             why: "The price of a dozen eggs is the most direct published reading of a poultry supply shock."}
+          - {indicator: store_prices, item: chicken, rungs: [level, pace, converging], direction: up,
+             why: "Whole chicken, for the same reason."}
+    triggers:
+      watch:
+        stage: pressure
+        min_firing: 1
+        text: >-
+          A first detection near a dense poultry region. We cannot currently see this in data; it
+          would come from the agency's own announcements.
+      ready:
+        stage: buffer
+        min_firing: 1
+        text: >-
+          Processor stocks falling. Movement controls and surge surveillance still change the
+          outcome at this point.
+      act:
+        stage: household
+        min_firing: 1
+        text: >-
+          Egg and chicken prices moving in shops. The birds have already been lost.
+    depends_on:
+      - indicator: store_prices
+        assumption: >-
+          Egg and chicken prices in shops reflect a poultry supply shock.
+        would_change: >-
+          They are national monthly averages published about six weeks later, and supply-managed
+          pricing dampens and delays the signal. A regional outbreak could run its course without
+          moving them at all. This chain is weakly watched and should be read that way.
+
+  cyber:
+    title: A cyberattack takes a grocery distributor offline
+    summary: >-
+      An outage empties shelves within days, drawing down whatever stock sits behind them.
+    stages:
+      - id: pressure
+        link: stores
+        watch: []
+        unwatched_why: >-
+          There is no public feed that confirms an outage at a named food business. Cyber advisories
+          describe vulnerabilities, not incidents, and companies rarely disclose quickly. This stage
+          is unwatched by necessity.
+      - id: buffer
+        link: processing
+        watch:
+          - {indicator: food_mfg_inventory, rungs: [level, pace, converging], direction: down,
+             why: "Stock held between plants and shops is what an outage eats into, though a month-end national figure may miss an outage lasting a week."}
+      - id: household
+        link: stores
+        watch:
+          - {indicator: store_prices, rungs: [converging], direction: up,
+             why: "A short outage is more likely to empty shelves than to move average prices, so this stage may stay quiet even in a serious incident."}
+    triggers:
+      watch:
+        stage: pressure
+        min_firing: 1
+        text: >-
+          A reported outage at a major distributor. We cannot see this in data.
+      ready:
+        stage: buffer
+        min_firing: 1
+        text: >-
+          Stock between plants and shops falling unusually fast. Manual ordering and mutual aid
+          still work at this point.
+      act:
+        stage: household
+        min_firing: 1
+        text: >-
+          Prices moving. Shelves will have been empty for some days already.
+    depends_on:
+      - indicator: food_mfg_inventory
+        assumption: >-
+          Stock held by food processors stands in for the buffer between plants and shops.
+        would_change: >-
+          It measures dollars at the end of a month across the whole country, so a one-week outage
+          at one distributor would very likely not appear. Treat a quiet reading here as no
+          evidence, not as evidence of nothing.
+
+  workforce:
+    title: Illness spreads through meat-plant workers
+    summary: >-
+      Absence closes processing lines, which backs animals up on farms and thins the meat counter.
+    stages:
+      - id: pressure
+        link: processing
+        watch: []
+        unwatched_why: >-
+          There is no current public reading of absence at food plants. Public health reporting
+          covers communities, not workplaces, and Statistics Canada's work absence figures are
+          annual and industry-wide.
+      - id: buffer
+        link: processing
+        watch:
+          - {indicator: food_mfg_inventory, rungs: [level, pace, converging], direction: down,
+             why: "Stock falling while shipments hold up is what a processing slowdown looks like in published data."}
+      - id: household
+        link: stores
+        watch:
+          - {indicator: store_prices, item: ground_beef, rungs: [level, pace, converging], direction: up,
+             why: "Ground beef is the most widely bought meat and the first to move."}
+          - {indicator: store_prices, item: chicken, rungs: [level, pace, converging], direction: up,
+             why: "Whole chicken, for the same reason."}
+    triggers:
+      watch:
+        stage: pressure
+        min_firing: 1
+        text: >-
+          Community cases rising near major plants. We cannot see this in data.
+      ready:
+        stage: buffer
+        min_firing: 1
+        text: >-
+          Processor stocks falling unusually fast. Protections and staffing changes still help here.
+      act:
+        stage: household
+        min_firing: 1
+        text: >-
+          Meat prices moving in shops. Lines have already been running short.
+    depends_on:
+      - indicator: food_mfg_inventory
+        assumption: >-
+          Falling processor stocks reflect lines running below capacity.
+        would_change: >-
+          Stocks also fall when demand is strong and everything is working. Read it with the price
+          readings: stocks falling while prices are flat is a busy month, not a shortage.

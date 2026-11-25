@@ -1,0 +1,238 @@
+# The three questions each reading could not answer before.
+#
+# Every indicator already answers "what is happening" with a measured figure,
+# and says what it does not show. These three complete the set the brief asks
+# for, and they are all written by the research team:
+#
+#   why_for_canada   why this figure matters here, not in general
+#   what_next        what could follow if it keeps moving, pointing at the
+#                    chain of knock-on effects that uses it
+#   to_consider      what a decision-maker could weigh. Options to consider,
+#                    never advice, and no agency has agreed to any of them.
+#
+# These are judgement, not measurement, and the site labels them as such on
+# every card. Keep them short, in plain words, active voice, and specific to
+# the figure above them. Nothing here may state a number that is not already
+# in the published data: a number written here would not update with the data
+# and would go stale silently.
+
+readings:
+  grain_stocks:
+    why_for_canada: >-
+      Grain in licensed elevators and at port terminals is the part of the harvest that is ready to move.
+      When it is high while shipments are low, the grain is stuck rather than saved; when both fall together,
+      Canada is selling well.
+    what_next: >-
+      Read it beside the shipment figures. Stocks climbing while shipments fall is what a transport blockage
+      looks like from the elevator end, which is the chain the rail test follows.
+    to_consider: >-
+      Ask the railways and the terminals for their own loading plans before the next grain week, and check
+      whether trucking and other ports could take any of the volume if the corridor stays blocked.
+  grain_exports:
+    why_for_canada: >-
+      Grain sales abroad are a large part of farm income, and the ports are the single point every tonne
+      passes through. A fall here is felt on farms within weeks.
+    what_next: >-
+      A sustained fall points either to a transport problem or to lost sales. The rail and lost-market tests
+      follow the two chains, and they share this figure, so the other readings decide which one it is.
+    to_consider: >-
+      Check whether the fall is matched by lower rail loadings, which points to transport, or by stocks
+      building with transport normal, which points to demand.
+  produce_prices:
+    why_for_canada: >-
+      Canada imports most of its fresh fruit and vegetables in winter. Wholesale prices at Toronto are the
+      earliest published sign that something has gone wrong where that food is grown.
+    what_next: >-
+      Wholesale prices move to shops in a few weeks. Watch which products move: one or two is usually a crop
+      problem in one place, while most of them moving together points to transport or the exchange rate.
+    to_consider: >-
+      Where several products move at once, ask whether buyers can switch growing regions, and warn food banks
+      and school meal programmes early, because they buy the same produce.
+  food_affordability:
+    why_for_canada: >-
+      People do not experience food prices on their own; they experience them against what they earn. This gap
+      is the closest published figure to whether food is getting harder to afford.
+    what_next: >-
+      A gap that stays open for several months tends to show up later in the share of people who cannot afford
+      enough food, which is published only once a year and long after the fact.
+    to_consider: >-
+      Check whether income support, school meal and food bank budgets are keeping pace with food prices rather
+      than with general inflation, which has been rising more slowly.
+  food_recalls:
+    why_for_canada: >-
+      Recalls show the safety system working, not failing. A sudden cluster matters more than the count: it can
+      mean one plant or one ingredient is affecting many products at once.
+    what_next: >-
+      A cluster with one cause can close a plant, and for some products a single plant supplies much of the
+      country. The plant-closure test follows that chain.
+    to_consider: >-
+      Where several recalls share a hazard or a supplier, ask how much of the national supply of that product
+      comes from one place.
+  weather_alerts:
+    why_for_canada: >-
+      Alerts in farming regions during seeding, growing or harvest can cost a crop in days. They are also the
+      fastest signal on this site, published as the weather happens.
+    what_next: >-
+      A run of alerts across the Prairies in one season is how a drought year starts. The drought test follows
+      what happens if it continues.
+    to_consider: >-
+      Match the alerts against the crop calendar for the areas affected, since the same warning matters far
+      more at flowering than after harvest.
+  sea_lanes:
+    why_for_canada: >-
+      Canada's fertilizer, fuel and container goods travel these routes. The Strait of Hormuz alone normally
+      carries about a third of the world's seaborne fertilizer trade.
+    what_next: >-
+      Fewer ships raises world prices first, then what Canadian farmers pay a season later, which is the chain
+      the fertilizer test follows.
+    to_consider: >-
+      Ask how much of next season's fertilizer is already bought and at what price, since the cost that matters
+      is fixed months before seeding.
+  ports:
+    why_for_canada: >-
+      Almost everything Canada sells abroad and much of what it buys passes over a small number of berths.
+      A fall is one of the earliest signs that goods have stopped moving.
+    what_next: >-
+      Cargo falling at the west coast ports while rail loadings also fall is the rail test's chain. Cargo
+      falling with rail normal points instead to the ships or the buyers.
+    to_consider: >-
+      Ask the port authorities what is holding cargo, and whether another port could take some of it.
+  world_fertilizer:
+    why_for_canada: >-
+      Canada makes its own potash but imports most of its phosphate and much of its nitrogen. These prices set
+      what farmers will pay next spring, and fertilizer is one of the largest costs in a crop.
+    what_next: >-
+      A rise here reaches Canadian farm costs in roughly a season. If it arrives after the crop is planned,
+      farmers cut application rates instead, which lowers yields the following autumn.
+    to_consider: >-
+      Check how much supply is already contracted for the coming season, and whether a price rise this far out
+      can still be met by buying earlier or from somewhere else.
+  world_prices:
+    why_for_canada: >-
+      Canada sells into these markets and buys from them. High world prices lift farm incomes and food costs at
+      the same time, so the effect depends on who you are.
+    what_next: >-
+      A sharp rise usually reaches Canadian shelves within a few months, and reaches poorer importing countries
+      much faster and harder.
+    to_consider: >-
+      Separate what is good for Canadian sellers from what is hard for Canadian buyers, because a single number
+      hides both.
+  diesel:
+    why_for_canada: >-
+      Diesel moves almost every tonne of food in Canada, and it is the fallback when rail stops. Its cost sets
+      how much of a disruption can be trucked around.
+    what_next: >-
+      Costly diesel during a transport disruption narrows the options sharply. The rail test follows that chain
+      from the first cost pressure.
+    to_consider: >-
+      Where a corridor is already under strain, ask what trucking a diverted load would cost before assuming it
+      is available.
+  farm_inputs:
+    why_for_canada: >-
+      This is where a world price becomes a Canadian cost. What farmers pay decides how much fertilizer goes on
+      the land, and that decides the size of next year's crop.
+    what_next: >-
+      Costs rising faster than usual before seeding tend to show up as lower application rates, and then as
+      smaller harvests the following autumn. The fertilizer test follows that chain.
+    to_consider: >-
+      Ask farm groups what is already booked for the coming season, since the index moves after the decisions
+      that matter have been taken.
+  store_prices:
+    why_for_canada: >-
+      These are the prices people actually pay, and they are the last link in every chain on this site. Movement
+      here means a shock has already arrived.
+    what_next: >-
+      Watch which foods move rather than the average. Eggs and chicken moving together points at poultry; meat
+      alone points at processing; everything together points at transport or fuel.
+    to_consider: >-
+      Where a few foods move sharply, trace them back to where they are made or grown before treating it as
+      general inflation.
+  provincial_prices:
+    why_for_canada: >-
+      A national average hides where food costs are rising fastest. The spread between provinces is often wider
+      than the change in the average.
+    what_next: >-
+      A province pulling away from the rest usually reflects transport distance, local supply or the exchange
+      rate on imports, rather than anything national.
+    to_consider: >-
+      Target support where the rises are, not where the average is, and check whether the provinces furthest
+      ahead share a supply route.
+  food_insecurity:
+    why_for_canada: >-
+      This is the outcome everything else on this site is ultimately about: how many people cannot afford
+      enough food.
+    what_next: >-
+      It is published once a year, long after the fact, so it cannot warn of anything. It is here to say how
+      much ground there is to lose, and to check later whether a hard year showed up.
+    to_consider: >-
+      Use the faster figures on this site for warning and this one for accounting, and do not wait for this one
+      to confirm what the price and wage figures already show.
+  rail_freight:
+    why_for_canada: >-
+      Two railways carry most of Canada's grain and fertilizer over long distances with almost no alternative.
+      This is the most concentrated link in the chain.
+    what_next: >-
+      A fall in tonnes moved is the clearest sign a corridor is not working, and it is the middle of the rail
+      test's chain: pressure first, then movement, then storage, then shops.
+    to_consider: >-
+      Because these figures arrive about two months late, treat the weekly port and shipment figures as the
+      early warning and this one as the confirmation.
+  work_stoppages:
+    why_for_canada: >-
+      A strike or lockout at a railway, a port or a large plant can stop a whole corridor, and most Canadian
+      transport disruptions have started this way.
+    what_next: >-
+      A dispute at a transport employer is the first stage of the rail test's chain, and notice periods give
+      more warning than almost any other signal on this site.
+    to_consider: >-
+      Where a dispute involves a railway, a port or a major processor, ask what moves through it and what the
+      alternative route would cost, before notice expires.
+  exchange_rate:
+    why_for_canada: >-
+      Canada buys fertilizer, fuel, machinery and most winter produce in US dollars. A weaker dollar raises all
+      of those costs even when world prices have not moved.
+    what_next: >-
+      A sharp fall adds to the cost of every imported input within weeks, which is why it sits inside the
+      fertilizer chain as well as in the price figures.
+    to_consider: >-
+      When reading a world price rise, check how much of the Canadian increase is the world price and how much
+      is the currency, because the two call for different responses.
+  prairie_drought:
+    why_for_canada: >-
+      Most of Canada's wheat, canola and pulses grow here, and so does the feed for cattle. A dry year on the
+      Prairies is a national event.
+    what_next: >-
+      Drought during the growing season reduces both the crop and the hay, which empties feed stores and forces
+      herd sales. The drought test follows that chain.
+    to_consider: >-
+      Sourcing feed early is far cheaper than sourcing it after a bad harvest is confirmed, so the useful
+      moment is during the season, not after it.
+  us_drought:
+    why_for_canada: >-
+      Canada imports most of its fresh produce from a few US states in winter. Drought there reaches Canadian
+      shops with no Canadian alternative at that time of year.
+    what_next: >-
+      Drought in those states tends to show up in Toronto wholesale prices within weeks, and in shops a few
+      weeks after that.
+    to_consider: >-
+      A dry year on both sides of the border leaves fewer alternatives than either one alone, so read this
+      beside the Prairie figures rather than separately.
+  farm_grain_stocks:
+    why_for_canada: >-
+      This is the only figure that counts the grain still on farms, which for most of the year is the larger
+      part of what Canada holds. Everything else on this site sees only the commercial share.
+    what_next: >-
+      It says how large the buffer is, not whether it is being used, because it is measured three times a year.
+      Read it with the weekly elevator figures, which are timelier but much narrower.
+    to_consider: >-
+      Before treating a fall in elevator stocks as a shortage, check whether the grain is simply still on farms.
+  food_mfg_inventory:
+    why_for_canada: >-
+      This is the stock sitting between plants and shops, and it is what a sudden interruption eats into first.
+      Until now this link of the chain had no published measure at all.
+    what_next: >-
+      Stock falling unusually fast while shipments hold up is what a processing or distribution problem looks
+      like in published data. The cyberattack and plant-closure tests both follow that chain.
+    to_consider: >-
+      Treat a quiet reading here as no evidence rather than evidence of nothing: a disruption lasting a week
+      may not appear in a national month-end figure at all.

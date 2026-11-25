@@ -1,6 +1,7 @@
 // Step 3: the threats. What could go wrong, what is showing up now, and what acting early could save.
 import { useMemo, useState } from "react";
 import { Evidence } from "../components/Badges";
+import Cascade, { CascadeLine } from "../components/Cascade";
 import IndicatorCard from "../components/IndicatorCard";
 import LineChart, { Legend } from "../components/LineChart";
 import { StepFoot, StepHead } from "../components/Steps";
@@ -8,7 +9,7 @@ import { GROUP_PLAIN, ORIGIN_PLAIN, TEST_LIVE, TEST_TITLE } from "../content/pla
 import { SCEN, MODELLED, MODEL_CARDS, CATS, REG, SIG, fmtM, fmtDay, CHECKED } from "../legacy/core.js";
 import { useData } from "../lib/data";
 import { href } from "../lib/router";
-import type { EventItem, Indicator } from "../lib/types";
+import type { Chain, EventItem, Indicator, Transmission } from "../lib/types";
 import { getGuess, saveGuess } from "../lib/visit";
 
 const S: any = SCEN;
@@ -17,7 +18,11 @@ const BAND: Record<string, string> = { High: "High concern", Moderate: "Moderate
 export function ThreatsHub() {
   const { data: ev } = useData<{ items: EventItem[] }>("events.json");
   const { data: og } = useData<{ items: any[] }>("ongoing.json");
+  const { data: tr } = useData<Transmission>("transmission.json");
   const [open, setOpen] = useState<string | null>(null);
+  const chains = tr?.chains || [];
+  const byId: Record<string, Chain> = Object.fromEntries(chains.map((c) => [c.id, c]));
+  const moving = chains.filter((c) => c.stage_reached);
   const items = ev?.items || [];
   const nWarn = items.filter((e) => e.kind === "weather_alert").length;
   const nRecent = items.filter((e) => (e.kind === "recall" || e.kind === "gov_notice") && (e.date || "") >= new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10)).length;
@@ -26,7 +31,7 @@ export function ThreatsHub() {
   return (
     <>
       <StepHead n={3} />
-      <p style={{ maxWidth: "75ch" }}>A threat is anything that could break a link in the chain: bad weather, an animal disease, a strike, a cyberattack, a trade dispute. Some start in Canada, others abroad. This step lists the eighteen threats we track, shows which ones are showing up now, and lets you test what acting early could save.</p>
+      <p style={{ maxWidth: "75ch" }}>A threat is anything that could break a link in the chain: bad weather, an animal disease, a strike, a cyberattack, a trade dispute. Some start in Canada, others abroad. This step lists the {(REG as any[]).length} threats we track, shows which ones are showing up now, and lets you test what acting early could save.</p>
 
       <h2>Is anything happening now?</h2>
       {(og?.items || []).map((o) => (
@@ -49,19 +54,31 @@ export function ThreatsHub() {
         </a>
       </div>
 
-      <h2 style={{ marginTop: 24 }}>What if? Seven threats you can test</h2>
-      <p className="small muted" style={{ maxWidth: "75ch" }}>Each test is a simple model. It compares doing nothing, waiting until damage is visible, and acting at the first warning signs. You can change the settings. The numbers are illustrations built from stated assumptions, not forecasts.</p>
+      <h2 style={{ marginTop: 24 }}>How far has anything travelled along a chain?</h2>
+      <p className="small muted" style={{ maxWidth: "75ch" }}>
+        For each of the seven threats below we have written out the chain of knock-on effects, from the first
+        pressure outside Canada to the moment it reaches a shop shelf, and named the published figures that
+        would show a shock at each link. This is how far those figures say anything has got.{" "}
+        {tr ? (moving.length
+          ? <>Of the {chains.length} chains, {moving.length === 1 ? "one shows" : `${moving.length} show`} readings
+            that have moved along {moving.length === 1 ? "it" : "them"}.</>
+          : <>None of the {chains.length} chains shows readings that have moved along it.</>) : null}
+      </p>
+
+      <h2 style={{ marginTop: 24 }}>What if? {MODELLED.length} threats you can test</h2>
+      <p className="small muted" style={{ maxWidth: "75ch" }}>Each test is a simple model. It compares doing nothing, waiting until damage is visible, and acting at the first warning signs. You can change the settings. The numbers are illustrations built from stated assumptions, not forecasts. Beside each test you will also see how far the live figures have travelled along that threat's chain. That is a separate reading, and the test itself does not use it: the test runs on the assumptions you set, not on today's data.</p>
       <div className="grid3">
         {MODELLED.map((k: string) => (
           <a key={k} className="card" href={href(`/threats/${k}`)}>
             <div className="meta"><Evidence cls="scenario_output" /></div>
             <h4>What if {TEST_TITLE[k].replace(/^./, (c) => c.toLowerCase())}?</h4>
             <p>{MODEL_CARDS[k].q}</p>
+            {byId[k] && <CascadeLine chain={byId[k]} />}
           </a>
         ))}
       </div>
 
-      <h2 style={{ marginTop: 24 }}>All eighteen threats we track</h2>
+      <h2 style={{ marginTop: 24 }}>All {(REG as any[]).length} threats we track</h2>
       <div className="notice judge"><Evidence cls="author_judgement" /> The level of concern and the warning level for each threat are the research team's own ratings, carried over from the <a href="https://bdzion.github.io/canada-food-stress-test/">Canada Food System Stress Test</a>. They are not measurements. A structured review with experts should replace them.</div>
       {(CATS as any[]).map((c) => {
         const rows = (REG as any[]).filter((r) => r.cat === c.id).sort((a, b) => b.score - a.score);
@@ -89,6 +106,25 @@ export function ThreatsHub() {
   );
 }
 
+/* The legacy models hold this under the key `playbook`. That word is ruled out
+ * for this site, and no reader ever sees it; it survives only because
+ * src/legacy/core.js is a verbatim copy of the pinned stress-test page and the
+ * regression test depends on that. Read it as "what could be agreed in
+ * advance", which is what the heading says. */
+function AgreedInAdvance({ s }: { s: any }) {
+  const agreed = s.playbook;
+  return (
+    <section className="panel">
+      <h3>What could be agreed before it happens</h3>
+      <p className="small muted">A proposal for discussion. No agency has agreed to it.</p>
+      <p><b>When to act.</b> {agreed.trigger}</p>
+      <p><b>What to do.</b> {agreed.action}</p>
+      <p><b>How to pay for it.</b> {agreed.money}</p>
+      <p><b>How to tell whether it worked.</b> {agreed.learning}</p>
+    </section>
+  );
+}
+
 const GUESSES: [string, number, number][] = [["Less than 10%", 0, 10], ["10 to 30%", 10, 30], ["30 to 60%", 30, 60], ["More than 60%", 60, 1000]];
 
 function LiveContext({ k }: { k: string }) {
@@ -97,13 +133,35 @@ function LiveContext({ k }: { k: string }) {
   const inds = (data?.indicators || []).filter((i) => L?.ind?.includes(i.id));
   return (
     <section className="panel">
-      <h3>What the latest data show</h3>
+      <h3>The figures behind this chain</h3>
       <p className="small muted">{L?.text}</p>
       {inds.map((i) => <IndicatorCard key={i.id} i={i} compact role={false} />)}
       {L?.link ? <p><a href={href(L.link)}>{L.label} →</a></p> : null}
-      <p className="small"><b>The test does not use these figures.</b> You set its assumptions yourself. The live data are here so you can judge how close the situation is to the test.</p>
+      <p className="small">
+        <b>The test above does not use these figures.</b> You set its assumptions yourself, so its numbers stay
+        the same whatever the data do. The figures are here because they say how far a real disruption has
+        travelled along this chain, which is set out below.
+      </p>
     </section>
   );
+}
+
+/* What the published readings say about this chain. Separate from the test
+ * itself, which is an illustration the reader drives. */
+function LiveCascade({ k }: { k: string }) {
+  const { data, error } = useData<Transmission>("transmission.json");
+  if (error) return <p className="small warn">We could not load the live reading of this chain: {error}</p>;
+  if (!data) return <p className="small muted">Loading the live reading of this chain…</p>;
+  const chain = data.chains.find((c) => c.id === k);
+  if (!chain) {
+    return (
+      <section className="panel">
+        <h3>What the live figures say about this chain</h3>
+        <p>We do not yet publish a live reading for this test. The indicators above are the nearest we have.</p>
+      </section>
+    );
+  }
+  return <div className="panel"><Cascade chain={chain} note={data.note} /></div>;
 }
 
 export function TestPage({ k }: { k: string }) {
@@ -217,16 +275,11 @@ export function TestPage({ k }: { k: string }) {
         </div>
       )}
 
+      <LiveCascade k={k} />
+
       <div className="grid2">
         <LiveContext k={k} />
-        <section className="panel">
-          <h3>What could be agreed before it happens</h3>
-          <p className="small muted">A proposal for discussion. No agency has agreed to it.</p>
-          <p><b>When to act.</b> {s.playbook.trigger}</p>
-          <p><b>What to do.</b> {s.playbook.action}</p>
-          <p><b>How to pay for it.</b> {s.playbook.money}</p>
-          <p><b>How to tell whether it worked.</b> {s.playbook.learning}</p>
-        </section>
+        <AgreedInAdvance s={s} />
       </div>
       <section className="panel">
         <h3>The assumptions behind this test</h3>

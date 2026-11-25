@@ -1,0 +1,12 @@
+[
+ {
+  "status": "FAILED",
+  "object": {
+   "responseStatusCode": 2,
+   "productId": 16100047,
+   "coordinate": "1.8.1.99.0.0.0.0.0.0",
+   "vectorId": 0,
+   "vectorDataPoint": []
+  }
+ }
+]

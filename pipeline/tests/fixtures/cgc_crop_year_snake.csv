@@ -1,0 +1,11 @@
+crop_year,grain_week,week_ending_date,worksheet,metric,period,grain,grade,region,ktonnes
+2026-27,9,2026-10-04,Summary,Commercial Stocks,Current Week,Wheat,All,Primary Elevators,4182.2
+2026-27,9,2026-10-04,Summary,Commercial Stocks,Current Week,Wheat,All,Vancouver,1500.1
+2026-27,9,2026-10-04,Summary,Commercial Stocks,Current Week,Canola,All,Thunder Bay,1260.0
+2026-27,9,2026-10-04,Terminal Exports,Exports,Current Week,Wheat,All,Vancouver,1040.5
+2026-27,9,2026-10-04,Primary,Deliveries,Current Week,Wheat,All,Primary Elevators,1514.3
+2026-27,8,2026-09-27,Summary,Commercial Stocks,Current Week,Wheat,All,Primary Elevators,3908.5
+2026-27,8,2026-09-27,Summary,Commercial Stocks,Current Week,Wheat,All,Vancouver,1400.0
+2026-27,8,2026-09-27,Terminal Exports,Exports,Current Week,Wheat,All,Vancouver,785.9
+2026-27,9,2026-10-04,Terminal Exports,Exports,Year to Date,Wheat,All,Vancouver,9999.9
+2026-27,9,2026-10-04,Summary,Commercial Stocks,Current Week,Barley,All,Churchill,-

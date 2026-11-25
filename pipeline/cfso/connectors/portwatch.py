@@ -6,23 +6,43 @@ and after the first run fetch only the last few weeks.
 """
 from __future__ import annotations
 
+import time
 from datetime import date, timedelta
 
 from ..core import SourceError, config, fetch_json, iso, registry, utc_now
 
 ID = "GL-03"
 PAGE = 1000
+ATTEMPTS = 4
+
+
+def _page(url: str, params: dict) -> dict:
+    """One page of an ArcGIS query, retrying the service's own error replies.
+
+    ArcGIS answers most failures with HTTP 200 and an error object in the body,
+    so core.fetch's retry never sees them. Transient ones ("Invalid URL" among
+    them) have taken this source down for a whole refresh cycle, and with it the
+    live check on the only ongoing disruption, so they are retried here with the
+    same bounded back-off.
+    """
+    last = None
+    for i in range(ATTEMPTS):
+        d = fetch_json(url, params=params)
+        if "error" not in d:
+            return d
+        last = d["error"].get("message") or "unknown error"
+        if i < ATTEMPTS - 1:
+            time.sleep(min(60, 3 * 2 ** i))
+    raise SourceError(f"PortWatch error after {ATTEMPTS} attempts: {last}")
 
 
 def _query(layer: str, where: str, fields: str) -> list[dict]:
     base = registry()[ID]["endpoint"]
     rows, off = [], 0
     while True:
-        d = fetch_json(f"{base}/{layer}/FeatureServer/0/query", params={
+        d = _page(f"{base}/{layer}/FeatureServer/0/query", {
             "where": where, "outFields": fields, "orderByFields": "date", "returnGeometry": "false",
             "f": "json", "resultOffset": off, "resultRecordCount": PAGE})
-        if "error" in d:
-            raise SourceError(f"PortWatch error: {d['error'].get('message')}")
         feats = d.get("features") or []
         rows += [f["attributes"] for f in feats]
         if not feats or not d.get("exceededTransferLimit"):

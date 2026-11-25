@@ -5,9 +5,9 @@ export const STEPS = [
   { n: 1, path: "/system", title: "The system", q: "How does food move through Canada, and where can it get stuck?",
     blurb: "A simple map of the chain from farm supplies to grocery stores, with the weak points marked." },
   { n: 2, path: "/indicators", title: "The indicators", q: "How exposed is each link, and what do the latest figures show?",
-    blurb: "Twelve facts that show where Canada has little backup, and twenty sets of official figures updated automatically." },
+    blurb: "Published facts that show where Canada has little backup, and official figures updated automatically." },
   { n: 3, path: "/threats", title: "The threats", q: "What could go wrong, and is anything happening now?",
-    blurb: "Ongoing disruptions, eighteen threats, current warnings at home and abroad, and seven tests of what acting early could save." },
+    blurb: "Ongoing disruptions, the threats we track, current warnings at home and abroad, and tests of what acting early could save." },
   { n: 4, path: "/timelines", title: "Possible timelines", q: "How could a bad year unfold, and when is there still time to act?",
     blurb: "Four month-by-month stories of threats arriving together, and what a bad year could cost." },
 ];

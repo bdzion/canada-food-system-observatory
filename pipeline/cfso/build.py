@@ -10,18 +10,21 @@ from __future__ import annotations
 
 import hashlib
 import inspect
+import json
 import os
 import shutil
+import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from . import SCHEMA_VERSION
 from .connectors import CONNECTORS
-from .core import SourceError, config, iso, read_json, registry, sanitize, utc_now, write_json
+from .core import (SourceError, config, iso, load_yaml, read_json, registry, sanitize, utc_now,
+                   write_json)
 from .exposure import link_events
-from .indicators import (affordability_indicator, grain_indicator, produce_indicator,
+from .indicators import (affordability_indicator, grain_indicator, long_date, produce_indicator,
                          recalls_indicator, weather_indicator)
-from . import narrative, ongoing
+from . import narrative, ongoing, transmission
 from . import panels
 
 
@@ -100,19 +103,119 @@ def source_health(log: dict, extracts: dict) -> list[dict]:
 
 # ------------------------------------------------------------------ indicators
 
+LATE_WORDS = {
+    "continuous": "continuously", "business_days": "every business day", "monthly": "monthly",
+    "weekly": "weekly", "daily": "daily", "event_driven": "whenever there is news",
+    "annual": "once a year", "three_times_a_year": "three times a year",
+}
+
+
+def mark_lateness(inds: list[dict], sources: list[dict], today: date) -> None:
+    """Put the age of the data, and lateness, on the indicator itself.
+
+    The release already records source health in sources.json, and the situation
+    summary already adds a sentence. But the indicator's own headline is what
+    appears on the card, on its page, in the weekly brief and in every archived
+    day, and it said only the date. A reader meeting that sentence weeks later
+    had no way to know the source had stopped publishing.
+    """
+    health = {s["id"]: s for s in sources}
+    for ind in inds:
+        h = ind.get("headline") or {}
+        obs = h.get("observation_end")
+        age = None
+        if obs:
+            try:
+                age = (today - date.fromisoformat(obs[:10])).days
+            except ValueError:
+                age = None
+        srcs = [health[sid] for sid in ind.get("source_ids", []) if sid in health]
+        late = [s for s in srcs if s["health"] in ("stale", "error", "unavailable")]
+        h["age_days"] = age
+        h["late"] = bool(late)
+        if not late:
+            continue
+        s = late[0]
+        rhythm = LATE_WORDS.get(s["expected_frequency"], s["expected_frequency"].replace("_", " "))
+        if s["health"] == "unavailable":
+            note = (f"{s['provider']} could not be read at all in this update, so there is no current figure. "
+                    "Treat it as missing, not as unchanged.")
+        else:
+            note = (f"{s['provider']} normally publishes {rhythm}, but has published nothing since "
+                    f"{long_date(s['observation_end'])}"
+                    + (f", {s['age_days']} days ago" if s.get("age_days") is not None else "")
+                    + ". This is the last figure it published, not a current one.")
+        h["late_note"] = note
+        h["late_source"] = {"id": s["id"], "provider": s["provider"], "health": s["health"],
+                            "observation_end": s["observation_end"], "age_days": s.get("age_days"),
+                            "expected_frequency": s["expected_frequency"],
+                            "stale_after_days": s["stale_after_days"]}
+        h["text"] = (h.get("text") or "").rstrip() + " " + note
+
+
+#: The order the four questions are always asked in, so a reader learns the
+#: shape once and finds the same answers in the same place on every figure.
+FOUR_QUESTIONS = [
+    ("what_happening", "What is happening?", "measured"),
+    ("why_for_canada", "Why does it matter for Canada?", "author_judgement"),
+    ("what_next", "What could happen next?", "author_judgement"),
+    ("to_consider", "What could decision-makers consider?", "author_judgement"),
+]
+
+
+def add_four_questions(inds: list[dict]) -> list[str]:
+    """Attach the three written answers to each indicator. Returns any missing.
+
+    The first answer is the measured headline the pipeline already writes. The
+    other three are written by the team in readings.yml and carry the team's
+    rating label, because they are judgement and must never be read as data.
+    """
+    written = (load_yaml("readings.yml") or {}).get("readings") or {}
+    missing = []
+    for ind in inds:
+        w = written.get(ind["id"])
+        if not w:
+            missing.append(ind["id"])
+            continue
+        ind["reading"] = {
+            "why_for_canada": w["why_for_canada"].strip(),
+            "what_next": w["what_next"].strip(),
+            "to_consider": w["to_consider"].strip(),
+            "evidence_class": "author_judgement",
+            "note": ("Written by the research team, not measured. The figure above it is published data; "
+                     "these three are our reading of what it means."),
+        }
+    return missing
+
+
 def build_indicators(ex: dict) -> tuple[list[dict], dict[str, dict]]:
     inds, series = [], {}
     today = utc_now().date()
 
     def add(fn, *a, **k):
+        # ind_id and title are only used to describe a builder that fails; the
+        # panel builders take neither.
+        meta = {kk: k.get(kk) for kk in ("ind_id", "title")}
         try:
             if fn.__module__.endswith("panels"):
-                k = {kk: vv for kk, vv in k.items() if kk != "ind_id"}
+                k = {kk: vv for kk, vv in k.items() if kk not in ("ind_id", "title")}
             ind, ser = fn(*a, **k)
         except Exception as e:  # a builder failure must not sink the release
-            ind_id = k.get("ind_id") or getattr(fn, "__name__", "indicator")
-            inds.append({"id": ind_id, "title": ind_id.replace("_", " ").capitalize(), "role": "unknown",
-                         "headline": {"state": "source_unavailable", "text": f"Could not be computed: {sanitize(str(e))}"}})
+            ind_id = meta.get("ind_id") or getattr(fn, "__name__", "indicator")
+            k = meta
+            # A placeholder still has to answer the questions every other card
+            # answers, and carry a role the site can file it under, or it drops
+            # out of the indicator list while still being counted in it.
+            inds.append({
+                "id": ind_id, "title": k.get("title") or ind_id.replace("_", " ").capitalize(),
+                "role": "signal",
+                "question": "This figure could not be worked out in this update.",
+                "definition": "No value was produced, so there is nothing to describe. The source extract may be missing or in an unexpected shape.",
+                "how_calculated": "Not calculated in this update.",
+                "does_not_show": "Anything. Treat this figure as absent, not as zero or unchanged.",
+                "source_ids": [], "scenario": "",
+                "headline": {"state": "source_unavailable",
+                             "text": f"Could not be worked out in this update: {sanitize(str(e))}"}})
             return
         inds.append(ind)
         series[ind["id"]] = ser
@@ -174,6 +277,13 @@ def build_indicators(ex: dict) -> tuple[list[dict], dict[str, dict]]:
         add(panels.prairie_drought_indicator, ex["CA-09"], ind_id="prairie_drought")
     if "GL-05" in ex:
         add(panels.us_drought_indicator, ex["GL-05"], ind_id="us_drought")
+    # Added in release 3: the buffers the chain had no reading for.
+    if "CA-11" in ex:
+        add(panels.farm_grain_stocks_indicator, ex["CA-11"], ind_id="farm_grain_stocks",
+            title="All grain in the country, farms included")
+    if "CA-12" in ex:
+        add(panels.food_mfg_indicator, ex["CA-12"], ind_id="food_mfg_inventory",
+            title="Stock held by food processors")
     return inds, series
 
 
@@ -306,6 +416,15 @@ def run(data_dir: Path, only: set[str] | None = None) -> dict:
     write_json(new / "sources.json", sources)
 
     inds, series = build_indicators(extracts)
+    # Lateness is decided once, in the pipeline, from the source registry, and
+    # travels with the indicator into every page, brief and archived day.
+    mark_lateness(inds, sources, now.date())
+    no_reading = add_four_questions(inds)
+    if no_reading:
+        # Not fatal: a figure without a written reading still publishes its
+        # measurement. But it must be visible, not silent.
+        print(json.dumps({"warning": "indicators with no written reading in readings.yml",
+                          "ids": sorted(no_reading)}), file=sys.stderr)
     for sid, ser in series.items():
         write_json(new / "series" / f"{sid}.json", {"schema_version": SCHEMA_VERSION, **ser})
     links = link_events(extracts.get("GL-02"), extracts.get("GL-01"), extracts.get("CA-03"))
@@ -319,9 +438,12 @@ def run(data_dir: Path, only: set[str] | None = None) -> dict:
                             for k, v in (extracts.get("CA-03") or {}).get("series", {}).items()],
     }
     ongoing_items = ongoing.build(inds, now)
+    # The cascade carries memory, so it reads the previous release.
+    trans = transmission.build(inds, now, read_json(data_dir / "transmission.json"))
     prev_sit = read_json(data_dir / "situation.json")
     prev_events = read_json(data_dir / "events.json", {}) or {}
-    sit = narrative.situation(release_id, now, inds, events, links, sources, prev_sit, prev_events, ongoing_items)
+    sit = narrative.situation(release_id, now, inds, events, links, sources, prev_sit, prev_events,
+                              ongoing_items, trans)
 
     common = {"schema_version": SCHEMA_VERSION, "release_id": release_id, "generated_at": iso(now)}
     write_json(new / "indicators.json", {**common, "indicators": inds})
@@ -330,6 +452,7 @@ def run(data_dir: Path, only: set[str] | None = None) -> dict:
     write_json(new / "exposure.json", exposure)
     write_json(new / "situation.json", {**common, **sit})
     write_json(new / "ongoing.json", {**common, "items": ongoing_items})
+    write_json(new / "transmission.json", {**common, **trans})
     cdm = extracts.get("CA-09")
     if cdm and cdm.get("latest_geo"):
         write_json(new / "drought.geojson", _round_geo(cdm["latest_geo"]))

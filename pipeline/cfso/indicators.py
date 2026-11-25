@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import date, timedelta
 
+from . import screening
 from .core import config, median, pct_change, reference_state, rnd, words
 
 PLACE = {"US": "the United States", "MX": "Mexico", "CR": "Costa Rica", "CA": "Canada", "ON": "Ontario", "QC": "Quebec", "BC": "British Columbia"}
@@ -36,19 +37,54 @@ def fmt_num(v: float | None, nd: int = 0) -> str:
 
 
 def compare_words(st: dict, what: str = "") -> str:
-    """Plain sentence comparing one reading with the same time in past years."""
+    """Plain sentence placing one reading against the same time in past years.
+
+    When the reading carries a screening verdict (see cfso.screening) the
+    sentence reports the rung it reached: whether the level is a new high or low,
+    whether it is moving unusually fast, and whether the two agree. Without a
+    verdict it falls back to describing the level alone.
+    """
     n = st.get("n_years", 0)
-    if st["state"] == "insufficient_data":
-        return "We do not have enough past years of comparable data to say whether this is normal."
     pct = st.get("vs_median_pct")
     typical = ""
     if pct is not None and abs(pct) >= 1:
         typical = f" It is about {abs(pct):.0f}% {'above' if pct > 0 else 'below'} the typical level."
-    if st["direction"] == "within":
-        return f"That is normal for this time of year: it is within the range of the past {words(n)} years{what}.{typical}"
-    side = "higher" if st["direction"] == "above" else "lower"
+
+    sc = st.get("screen")
+    if sc:
+        parts = []
+        if "level" in sc.get("screens", []):
+            if st.get("state") == "insufficient_data":
+                parts.append(f"We do not have enough past years of comparable data{what} to place this reading.")
+            elif st.get("direction") == "within":
+                parts.append(f"It is inside the range of the past {words(n)} years for this time of year{what}.{typical}")
+            else:
+                side = "highest" if st.get("direction") == "above" else "lowest"
+                parts.append(f"It is the {side} of the {words(n + 1)} comparable readings: this one and the past "
+                             f"{words(n)} years{what}.{typical}")
+                if sc.get("level_blocked_by_years"):
+                    parts.append(f"With only {words(n)} years to compare we do not treat that as unusual on its own.")
+        if "pace" in sc.get("screens", []):
+            parts.append(sc.get("pace_words") or "")
+        if sc.get("rung") == "converging":
+            parts.append("Both checks agree, so this one is worth a closer look.")
+        elif sc.get("rung") == "level" and sc.get("top_rung") == "converging":
+            parts.append("A new high or low on a figure that climbs year after year is the normal state, "
+                         "not a warning: it is the pace that would make it one.")
+        elif sc.get("rung") == "pace" and sc.get("top_rung") == "converging":
+            parts.append("It has not yet passed the range of past years, so this is the earlier of the two signals.")
+        elif sc.get("worth_a_look"):
+            parts.append("Worth a closer look. One reading does not mean a crisis.")
+        return " ".join(p for p in parts if p)
+
+    # No verdict available: describe the level and claim nothing more.
+    if st.get("state") == "insufficient_data":
+        return "We do not have enough past years of comparable data to say whether this is normal."
+    if st.get("direction") == "within":
+        return f"That is inside the range of the past {words(n)} years for this time of year{what}.{typical}"
+    side = "higher" if st.get("direction") == "above" else "lower"
     return (f"That is {side} than at this time of year in any of the past {words(n)} years{what}.{typical} "
-            "Worth watching. One unusual reading does not mean a crisis.")
+            "Worth a closer look. One reading does not mean a crisis.")
 
 
 # ------------------------------------------------------------------ grain (CGC)
@@ -106,6 +142,17 @@ def grain_indicator(ext: dict, measure: str, *, ind_id: str, title: str, role: s
         prev = tables[measure].get(prior[0], {}).get(latest_w)
         wend = weeks_cur[str(latest_w)]["week_end"]
         span = f"the four weeks to {long_date(wend)}" if rolling == 4 else (f"the {rolling} weeks to {long_date(wend)}" if rolling > 1 else f"the week ending {long_date(wend)}")
+        # The pace screen needs a plain dated series; the crop-week table is
+        # keyed by week, so flatten the current and prior crop years into one.
+        flat = []
+        for cy in [cur, *prior]:
+            weeks = ext["crop_years"].get(cy, {})
+            for w, rec in weeks.items():
+                val = tables[measure].get(cy, {}).get(int(w))
+                if rec.get("week_end") and val is not None:
+                    flat.append({"t": rec["week_end"], "v": val})
+        flat.sort(key=lambda p: p["t"])
+        verdict, pace = screening.screen_series(ind_id, flat, "weekly", st)
         headline = {
             **st,
             "value": v, "unit": "thousand tonnes",
@@ -113,8 +160,11 @@ def grain_indicator(ext: dict, measure: str, *, ind_id: str, title: str, role: s
             "observation_end": wend,
             "prev_year_value": prev,
             "vs_prev_year_pct": rnd(pct_change(v, prev), 1),
-            "text": sentence.format(v=fmt_num(v / 1000, 2), span=span) + " " + compare_words(st),
+            "screen": verdict,
+            "text": sentence.format(v=fmt_num(v / 1000, 2), span=span) + " " + compare_words({**st, "screen": verdict}),
         }
+        if pace:
+            headline["pace"] = pace
     ind = {
         "id": ind_id, "title": title, "role": role, "question": question, "unit": "thousand tonnes",
         "source_ids": ["CA-05"], "frequency": "weekly", "definition": definition, "how_calculated": how,
@@ -147,12 +197,13 @@ def produce_indicator(ext: dict, statcan: dict | None) -> tuple[dict, dict]:
     cfg = config()["baseline"]
     cpi = _cpi_monthly(statcan)
     ref_month = max(cpi) if cpi else None
-    items, payload = [], []
+    items, payload, screened = [], [], []
     counts = defaultdict(int)
     for sid, s in ext["series"].items():
         pts = s["points"]
         if not pts:
             items.append({"id": sid, "label": s["label"], "state": "insufficient_data", "text": "No recent prices."})
+            screened.append({"level": {"state": "insufficient_data"}, "pace": {}})
             continue
         last = date.fromisoformat(pts[-1]["t"])
         ly, lw, _ = last.isocalendar()
@@ -175,14 +226,36 @@ def produce_indicator(ext: dict, statcan: dict | None) -> tuple[dict, dict]:
         st = reference_state(cur, ref, cfg["min_years"])
         counts[st["state"] + ("_" + st.get("direction", "") if st["state"].startswith("outside") else "")] += 1
         rng = f"${pts[-1]['lo']:.2f}" if pts[-1]["lo"] == pts[-1]["hi"] else f"${pts[-1]['lo']:.2f}–${pts[-1]['hi']:.2f}"
-        items.append({
+        # Both screens run on each product separately. The pace screen needs a
+        # dated series, so the weekly history is laid out on the Thursday of
+        # each ISO week and converted to the reference month's dollars.
+        dated = []
+        for ys, weeks in hist.items():
+            for ws, val in weeks.items():
+                if val is None:
+                    continue
+                f = _deflator(cpi, int(ys), int(ws), ref_month) if ref_month else None
+                if f is None:
+                    continue
+                try:
+                    dated.append({"t": date.fromisocalendar(int(ys), int(ws), 4).isoformat(), "v": val * f})
+                except ValueError:
+                    continue
+        dated.append({"t": last.isoformat(), "v": cur})
+        dated.sort(key=lambda p: p["t"])
+        verdict, pace = screening.screen_series("produce_prices", dated, "weekly", st)
+        item = {
             "id": sid, "label": s["label"], "short": f"{s['commodity'].lower()} from {PLACE.get(s['province'] if s['country'] == 'CA' and s['province'] else s['country'], s['country'])}",
             "package": s["package"], "origin": s["country"], "link": s.get("link") or None,
             "latest_date": pts[-1]["t"], "latest_range": rng, "week_mean": round(cur, 2),
             "vs_4wk_pct": rnd(pct_change(pts[-1]["mid"], ago4), 1),
-            **st, "ref_years": ref_years,
-            "text": f"{rng} per {s['package']} on {long_date(pts[-1]['t'])}. " + compare_words(st, ", after allowing for inflation"),
-        })
+            **st, "ref_years": ref_years, "screen": verdict,
+            "text": f"{rng} per {s['package']} on {long_date(pts[-1]['t'])}. " + compare_words({**st, "screen": verdict}, ", after allowing for inflation"),
+        }
+        if pace:
+            item["pace"] = pace
+        screened.append({"level": st, "pace": pace})
+        items.append(item)
         # Seasonal reference band for the chart: per ISO week, in reference-month dollars.
         band = []
         for w in range(1, 54):
@@ -204,12 +277,18 @@ def produce_indicator(ext: dict, statcan: dict | None) -> tuple[dict, dict]:
     short = counts.get("insufficient_data", 0)
     n = len(items)
     obs_end = ext["observation_end"]
+    agg = screening.aggregate_verdict("produce_prices", screened)
+    c = agg["counts"]
     def are(k: int) -> str:
         return "is" if k == 1 else "are"
     text = (f"We follow {n} fresh fruits and vegetables at the Toronto wholesale market. In the latest week, "
             f"{words(above)} cost more and {words(below)} cost less than at this time of year in any recent year, after allowing for inflation. "
             f"{words(within, True)} {are(within)} in {'its' if within == 1 else 'their'} normal range")
     text += f", and for {words(short)} we do not have enough past data." if short else "."
+    text += (f" {words(c['pace'], True)} of the {n} {are(c['pace'])} also rising or falling unusually fast"
+             + (f", and for {words(c['converging'])} of those both checks agree." if c["converging"]
+                else ", but no product sets off both checks at once.")) if c["pace"] else \
+            " None is moving unusually fast for the time of year."
     state = "outside_reference_range_review" if above + below else ("within_reference_range" if within else "insufficient_data")
     ind = {
         "id": "produce_prices", "title": "Fresh fruit and vegetable prices", "role": "market",
@@ -224,7 +303,8 @@ def produce_indicator(ext: dict, statcan: dict | None) -> tuple[dict, dict]:
                           "the exchange rate, quality and the timing of harvests all move wholesale prices."),
         "scenario": "", "chart": "produce",
         "headline": {"state": state, "above": above, "below": below, "within": within, "insufficient": short, "n": n,
-                     "observation_end": obs_end, "period_label": f"Latest prices {long_date(obs_end)}", "text": text},
+                     "observation_end": obs_end, "period_label": f"Latest prices {long_date(obs_end)}",
+                     "screen": agg, "text": text},
         "items": items,
         "baseline_rule": f"Compared with the same week in up to {cfg['years']} past years, in today's dollars (at least {cfg['min_years']} years needed).",
     }
@@ -264,7 +344,8 @@ def affordability_indicator(ext: dict) -> tuple[dict, dict]:
             else:
                 break
         headline = {
-            "state": "observed", "value": r["gap"], "unit": "percentage points",
+            "state": "observed", "screen": screening.verdict("food_affordability", {}, {}),
+            "value": r["gap"], "unit": "percentage points",
             "food_yoy": r["food"], "wage_yoy": r["wage"], "all_yoy": r["all"],
             "observation_end": r["t"], "period_label": month_label(r["t"]), "streak_months": streak,
             "direction": "food_faster" if faster else "wages_faster",
@@ -308,6 +389,7 @@ def recalls_indicator(ext: dict, today: date) -> tuple[dict, dict]:
             e = end.replace(year=end.year - k, day=28)
         ref.append(count(e))
     st = reference_state(cur, ref, cfg["baseline"]["min_years"])
+    verdict, _ = screening.screen_series("food_recalls", [], "monthly", st)
     recent = [r for r in ext["recent"] if date.fromisoformat(r["date"]) > end - timedelta(days=win)]
     by_h = defaultdict(int)
     for r in recent:
@@ -322,8 +404,8 @@ def recalls_indicator(ext: dict, today: date) -> tuple[dict, dict]:
     headline = {
         **st, "value": cur, "unit": "recalls",
         "observation_end": end.isoformat(), "period_label": f"{win} days to {long_date(end.isoformat())}",
-        "by_hazard": dict(sorted(by_h.items(), key=lambda x: -x[1])),
-        "text": f"The Canadian Food Inspection Agency issued {cur} food recall notice{'s' if cur != 1 else ''} in the {win} days to {long_date(end.isoformat())}. " + compare_words(st),
+        "by_hazard": dict(sorted(by_h.items(), key=lambda x: -x[1])), "screen": verdict,
+        "text": f"The Canadian Food Inspection Agency issued {cur} food recall notice{'s' if cur != 1 else ''} in the {win} days to {long_date(end.isoformat())}. " + compare_words({**st, "screen": verdict}),
     }
     ind = {
         "id": "food_recalls", "title": "Food recalls", "role": "signal",
@@ -368,6 +450,6 @@ def weather_indicator(ext: dict) -> tuple[dict, dict]:
         "headline": {"state": "official_notice_active" if alerts else "none_active", "value": len(alerts), "warnings": len(warn),
                      "farm_relevant": len(farm), "by_province": dict(by_prov), "by_type": dict(by_type),
                      "observation_end": ext["retrieved_at"], "period_label": f"When checked on {long_date(ext['retrieved_at'])}",
-                     "text": text},
+                     "screen": screening.verdict("weather_alerts", {}, {}), "text": text},
     }
     return ind, {"id": "weather_alerts", "kind": "alerts"}

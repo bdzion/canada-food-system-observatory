@@ -1,0 +1,61 @@
+[
+ {
+  "status": "SUCCESS",
+  "object": {
+   "productId": 16100047,
+   "coordinate": "1.8.1.3.0.0.0.0.0.0",
+   "vectorId": 803267,
+   "vectorDataPoint": [
+    {
+     "refPer": "2026-07-01",
+     "value": 0.98,
+     "decimals": 2,
+     "releaseTime": "2026-11-13T08:30",
+     "statusCode": 0
+    },
+    {
+     "refPer": "2026-08-01",
+     "value": 1.01,
+     "decimals": 2,
+     "releaseTime": "2026-11-13T08:30",
+     "statusCode": 0
+    },
+    {
+     "refPer": "2026-09-01",
+     "value": 0.98,
+     "decimals": 2,
+     "releaseTime": "2026-11-13T08:30",
+     "statusCode": 0
+    }
+   ]
+  }
+ },
+ {
+  "status": "SUCCESS",
+  "object": {
+   "productId": 16100047,
+   "coordinate": "1.9.1.3.0.0.0.0.0.0",
+   "vectorId": 803291,
+   "vectorDataPoint": [
+    {
+     "refPer": "2026-07-01",
+     "value": 0.53,
+     "decimals": 2,
+     "statusCode": 0
+    },
+    {
+     "refPer": "2026-08-01",
+     "value": null,
+     "decimals": 2,
+     "statusCode": 1
+    },
+    {
+     "refPer": "2026-09-01",
+     "value": 0.54,
+     "decimals": 2,
+     "statusCode": 0
+    }
+   ]
+  }
+ }
+]
