@@ -169,7 +169,8 @@ def grain_indicator(ext: dict, measure: str, *, ind_id: str, title: str, role: s
         "id": ind_id, "title": title, "role": role, "question": question, "unit": "thousand tonnes",
         "source_ids": ["CA-05"], "frequency": "weekly", "definition": definition, "how_calculated": how,
         "does_not_show": not_show, "scenario": scenario, "chart": "cropweek", "headline": headline,
-        "baseline_rule": f"Compared with the same week in each of the past {cfg['years']} crop years (at least {cfg['min_years']} needed). A crop year runs from August to July.",
+        "baseline_rule": (f"Compared with the same {'four weeks' if ind_id == 'grain_exports' else 'week'} in each of the past {cfg['years']} crop years "
+                          f"(at least {cfg['min_years']} needed). A crop year runs from August to July."),
     }
     return ind, {"id": ind_id, "kind": "cropweek", "crop_year": cur, "prior_crop_years": prior,
                  "unit": "thousand tonnes", "series": series}
@@ -298,7 +299,7 @@ def produce_indicator(ext: dict, statcan: dict | None) -> tuple[dict, dict]:
                        "Each product is always the same variety, grade, origin and box size, so its price can be compared over time."),
         "how_calculated": (f"For each product we take the average price in the latest week and compare it with the same week in up to {cfg['years']} past years. "
                            f"Past prices are first converted to {month_label(ref_month + '-01') if ref_month else 'today'}'s dollars using the Consumer Price Index, "
-                           "so inflation alone does not make today's prices look high. A product is flagged only if this week's price is above or below every past year."),
+                           "so inflation alone does not make today's prices look high. We then apply the level and pace checks explained on the About the data page."),
         "does_not_show": ("What shoppers pay in stores, prices in other cities, or why a price changed. Weather where the food is grown, "
                           "the exchange rate, quality and the timing of harvests all move wholesale prices."),
         "scenario": "", "chart": "produce",
